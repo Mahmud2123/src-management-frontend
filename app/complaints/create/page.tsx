@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { fetchCategories,createComplaint } from '@/lib/api';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Textarea } from '@/components/Textarea';
 import { Button } from '@/components/Button';
 import { Select } from '@/components/Select';
 import { Input } from '@/components/Input';
