@@ -235,6 +235,13 @@ export const resetUserPassword = async (userId: string) => {
 /**
  * ADVANCED STATISTICS
  */
+ // ✅ ADD THIS: Specifically for the Dashboard Activity Feed
+export const fetchRecentActivity = async (limit: number = 5) => {
+  const res = await axiosInstance.get('/notifications', { 
+    params: { limit } 
+  });
+  return res.data;
+};
 
 export const fetchGlobalStats = async () => {
   const response = await axiosInstance.get('/complaints/stats/global');

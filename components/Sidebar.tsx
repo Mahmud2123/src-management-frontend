@@ -2,12 +2,14 @@
 
 import { useAuth } from '@/providers/auth';
 import { useRouter, usePathname } from 'next/navigation';
+import { fetchNotifications } from '@/lib/api';
 import { 
   Home, FileText, Users, BarChart3, Bell, Settings, 
   LogOut, Shield, Plus, Menu, X, ChevronRight, Activity,
   UserCircle, TrendingUp, GraduationCap, User
 } from 'lucide-react';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
@@ -16,6 +18,18 @@ export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   if (!user) return null;
+
+  // 2. Fetch real notification data
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: fetchNotifications,
+    enabled: !!user, // Only fetch if user is logged in
+    refetchInterval: 30000, // Optional: refresh every 30 seconds
+  });
+
+  //3. Count unread notifications
+  // Adjust 'isRead' to 'read' based on your backend field name
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   const isAdmin = user.role === 'ADMIN';
   const isSRC = user.role === 'SRC_MEMBER' || user.role === 'SRC_EXECUTIVE' || user.role === 'ADMIN';
@@ -29,12 +43,13 @@ export default function Sidebar() {
       path: '/dashboard',
       show: true,
     },
-    {
-      name: 'All Complaints',
-      icon: FileText,
-      path: '/complaints',
-      show: true,
-    },
+   // Inside your navigation array:
+{
+  name: 'All Complaints',
+  icon: FileText,
+  path: '/complaints',
+  show: isSRC, 
+},
     {
       name: 'My Complaints',
       icon: UserCircle,
@@ -59,7 +74,7 @@ export default function Sidebar() {
       icon: Bell,
       path: '/notifications',
       show: true,
-      badge: 3, // This should come from real notification count
+      badge: unreadCount, // This should come from real notification count
     },
     {
       name: 'Global Statistics',

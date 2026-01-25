@@ -6,6 +6,9 @@ import { Badge } from '@/components/Badge';
 import { useAuth } from '@/providers/auth';
 import { useRouter } from 'next/navigation';
 import LoadingState from '@/components/LoadingState'; 
+import { useQuery } from '@tanstack/react-query';
+import { fetchUserActivity } from '@/lib/api';
+import { formatDistanceToNow } from 'date-fns'; 
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Area, AreaChart
@@ -25,9 +28,27 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { data, isLoading, error } = useStats();
   const router = useRouter();
+  
+
+  const { data: activities = [], isLoading: loadingActivity } = useQuery({
+    queryKey: ['recent-activity'],
+    queryFn: () => fetchUserActivity(),
+  });
+
   if (isLoading) {
     return <LoadingState message="Loading dashboard statistics..." />;
   }
+  //Helper to map types to colors (same logic as your notifications page)
+const getActivityStyle = (type: string) => {
+  const styles: Record<string, string> = {
+    'STATUS_CHANGE': 'bg-orange-500',
+    'NEW_COMMENT': 'bg-purple-500',
+    'NEW_COMPLAINT': 'bg-blue-500',
+    'RESOLVED': 'bg-green-500',
+    'default': 'bg-gray-500'
+  };
+  return styles[type] || styles.default;
+};
 
   if (error) {
     return (
@@ -339,34 +360,40 @@ export default function DashboardPage() {
 
         {/* Recent Activity */}
         <Card className="p-6 border-0 shadow-lg">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
-              <p className="text-sm text-gray-600 mt-1">Latest updates and changes</p>
-            </div>
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Activity className="w-5 h-5 text-purple-700" />
-            </div>
+  <div className="flex items-center justify-between mb-6">
+    <div>
+      <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
+      <p className="text-sm text-gray-600 mt-1">Latest updates and changes</p>
+    </div>
+    <div className="p-2 bg-purple-100 rounded-lg">
+      <Activity className="w-5 h-5 text-purple-700" />
+    </div>
+  </div>
+
+  <div className="space-y-4">
+    {loadingActivity ? (
+      <div className="animate-pulse space-y-4">
+        {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg" />)}
+      </div>
+    ) : activities.length > 0 ? (
+      activities.map((activity: any) => (
+        <div key={activity.id} className="flex items-start gap-4 group hover:bg-gray-50 p-3 rounded-lg transition-colors -mx-3 cursor-pointer"
+             onClick={() => activity.complaintId && router.push(`/complaints/${activity.complaintId}`)}>
+          <div className={`w-2 h-2 ${getActivityStyle(activity.type)} rounded-full mt-2`}></div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+            <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{activity.message}</p>
           </div>
-          <div className="space-y-4">
-            {[
-              { action: 'New complaint submitted', category: 'Library Hours', time: '5 mins ago', color: 'bg-blue-500' },
-              { action: 'Complaint resolved', category: 'Hostel Maintenance', time: '1 hour ago', color: 'bg-green-500' },
-              { action: 'Status updated to In Progress', category: 'Wi-Fi Issues', time: '2 hours ago', color: 'bg-orange-500' },
-              { action: 'New comment added', category: 'Canteen Services', time: '3 hours ago', color: 'bg-purple-500' },
-              { action: 'Complaint assigned', category: 'Security Concern', time: '5 hours ago', color: 'bg-yellow-500' },
-            ].map((activity, idx) => (
-              <div key={idx} className="flex items-start gap-4 group hover:bg-gray-50 p-3 rounded-lg transition-colors -mx-3">
-                <div className={`w-2 h-2 ${activity.color} rounded-full mt-2`}></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">{activity.category}</p>
-                </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">{activity.time}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+          <span className="text-xs text-gray-500 whitespace-nowrap">
+            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+          </span>
+        </div>
+      ))
+    ) : (
+      <p className="text-center text-gray-500 py-4 text-sm">No recent activity</p>
+    )}
+  </div>
+</Card>
       </div>
     </div>
   );

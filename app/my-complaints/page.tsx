@@ -21,13 +21,18 @@ export default function MyComplaintsPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState('');
 
-const { data: complaints = [], isLoading, refetch } = useQuery({
-  queryKey: ['my-complaints', statusFilter],
-  queryFn: () => fetchComplaints({ 
-    roleFilter: 'MINE', 
-    status: statusFilter || undefined 
-  }),
-});
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['my-complaints', statusFilter],
+    queryFn: () => fetchComplaints({ 
+      roleFilter: 'MINE', 
+      status: statusFilter || undefined 
+    }),
+  });
+  
+  // ✅ Change this line to safely access the array
+  // We check if data.data exists (common for paginated APIs), 
+  // otherwise check if data itself is the array.
+  const complaints: any[] = Array.isArray(data) ? data : (data?.data || []);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -59,12 +64,6 @@ const { data: complaints = [], isLoading, refetch } = useQuery({
     }
   };
 
-  const stats = {
-    total: complaints.length,
-    pending: complaints.filter((c: any) => c.status === 'PENDING').length,
-    inProgress: complaints.filter((c: any) => c.status === 'IN_PROGRESS').length,
-    resolved: complaints.filter((c: any) => c.status === 'RESOLVED').length,
-  };
 
   if (isLoading) {
     return (
@@ -76,7 +75,12 @@ const { data: complaints = [], isLoading, refetch } = useQuery({
       </div>
     );
   }
-
+  const stats = {
+    total: complaints?.length || 0,
+    pending: complaints?.filter((c: any) => c.status === 'PENDING').length || 0,
+    inProgress: complaints?.filter((c: any) => c.status === 'IN_PROGRESS').length || 0,
+    resolved: complaints?.filter((c: any) => c.status === 'RESOLVED').length || 0,
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
