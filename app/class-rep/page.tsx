@@ -130,7 +130,7 @@ const { data: departments = [] } = useQuery({
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => refetch()} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => refetch()} className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
@@ -412,7 +412,7 @@ const { data: departments = [] } = useQuery({
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setShowAddForm(false)}
                   className="px-8"
                 >

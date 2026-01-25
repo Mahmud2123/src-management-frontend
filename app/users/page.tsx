@@ -8,6 +8,7 @@ import { Badge } from '@/components/Badge';
 import LoadingState from '@/components/LoadingState';
 import AccessDenied from '@/components/AccessDenied';
 import { toast } from 'sonner';
+import { bulkImportUsers } from '@/lib/api';
 // ✅ Removed direct axios import to prevent accidental use
 import {
   Users, Search, Shield, Edit, Trash2, UserPlus, Mail,
@@ -194,15 +195,15 @@ export default function UsersManagementPage() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            <Button variant="outline" onClick={() => refetch()} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => refetch()} className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
-            <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={handleExport} className="flex items-center gap-2">
               <FileDown className="w-4 h-4" />
               Export
             </Button>
-            <Button variant="outline" onClick={() => setShowBulkImport(true)} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setShowBulkImport(true)} className="flex items-center gap-2">
               <FileUp className="w-4 h-4" />
               Bulk Import
             </Button>
@@ -605,7 +606,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <Button type="submit" className="flex-1" disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating...' : 'Create User'}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
           </div>
@@ -618,30 +619,25 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 // Bulk Import Modal Component
 function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [file, setFile] = useState<File | null>(null);
-
-  const importMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await axios.post('http://localhost:3001/api/users/bulk-import', formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('src_token')}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success('Users imported successfully');
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast.error('Import failed', {
-        description: error.response?.data?.message || error.message,
-      });
-    },
-  });
+const queryClient = useQueryClient();
+const importMutation = useMutation({
+  // ✅ FIXED: Using the centralized API function
+  mutationFn: (file: File) => bulkImportUsers(file),
+  
+  onSuccess: () => {
+    toast.success('Users imported successfully');
+    // Invalidate users query to show the new data in the table
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    onSuccess();
+  },
+  
+  onError: (error: any) => {
+    toast.error('Import failed', {
+      // ✅ FIXED: Using customMessage from our Axios interceptor
+      description: error.customMessage || error.message,
+    });
+  },
+});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -689,7 +685,7 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <Button type="submit" className="flex-1" disabled={importMutation.isPending || !file}>
               {importMutation.isPending ? 'Importing...' : 'Import'}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
           </div>
