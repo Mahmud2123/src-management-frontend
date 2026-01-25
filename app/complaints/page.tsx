@@ -31,16 +31,18 @@ export default function ComplaintsPage() {
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
   const [category, setCategory] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'MINE'>(
-    ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user?.role) ? 'ALL' : 'MINE'
-  );
+const [roleFilter, setRoleFilter] = useState<'ALL' | 'MINE'>(
+  user?.role && ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role) 
+    ? 'ALL' 
+    : 'MINE'
+);
   const [showFilters, setShowFilters] = useState(false);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } = useComplaints({
     status,
     priority,
-    categoryId: category,
-    roleFilter
+    categoryId: category || '',
+    roleFilter: roleFilter as 'ALL' | 'MINE'
   });
 
   const complaints: Complaint[] = data?.pages.flatMap(p => p.data) ?? [];
@@ -79,6 +81,13 @@ export default function ComplaintsPage() {
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const stats = [
+    { label: 'Total', value: complaints.length, color: 'bg-blue-100 text-blue-700', icon: FileText },
+    { label: 'Pending', value: complaints.filter((c: any) => c.status === 'PENDING').length, color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+    { label: 'In Progress', value: complaints.filter((c: any) => c.status === 'IN_PROGRESS').length, color: 'bg-orange-100 text-orange-700', icon: TrendingUp },
+    { label: 'Resolved', value: complaints.filter((c: any) => c.status === 'RESOLVED').length, color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  ];
   // filteredComplaints.map((complaint)=>{
   //   console.log(complaint);
     
@@ -99,7 +108,7 @@ export default function ComplaintsPage() {
           
           <div className="flex items-center gap-3">
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => refetch()}
               className="flex items-center gap-2"
             >
@@ -137,7 +146,7 @@ export default function ComplaintsPage() {
             {/* Filter Toggle */}
             <div className="flex items-center justify-between">
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center gap-2"
               >
@@ -241,7 +250,7 @@ export default function ComplaintsPage() {
           </div>
         ) : filteredComplaints.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredComplaints.map((complaint) => (
+            {filteredComplaints.map((complaint:any) => (
               <Card
                 key={complaint.id}
                 className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 overflow-hidden"
@@ -348,7 +357,7 @@ export default function ComplaintsPage() {
               onClick={() => fetchNextPage()}
               disabled={isFetchingNextPage}
               className="px-8 py-3"
-              variant="outline"
+              variant="secondary"
             >
               {isFetchingNextPage ? (
                 <>

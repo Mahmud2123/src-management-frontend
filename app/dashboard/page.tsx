@@ -5,6 +5,7 @@ import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { useAuth } from '@/providers/auth';
 import { useRouter } from 'next/navigation';
+import LoadingState from '@/components/LoadingState'; 
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Area, AreaChart
@@ -25,14 +26,7 @@ export default function DashboardPage() {
   const { data, isLoading, error } = useStats();
   const router = useRouter();
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-600 font-medium">Loading statistics...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState message="Loading dashboard statistics..." />;
   }
 
   if (error) {

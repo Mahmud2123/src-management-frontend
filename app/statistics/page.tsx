@@ -7,17 +7,18 @@ import {
   LineChart, Line, Cell, PieChart, Pie 
 } from 'recharts';
 import { Clock, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
+import { fetchAdvancedStats } from '@/lib/api';
+
+
 
 export default function StatisticsPage() {
-  const { data: stats } = useQuery({
-    queryKey: ['global-stats'],
-    queryFn: async () => {
-      const res = await axios.get('http://localhost:3001/api/complaints/stats/global', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('src_token')}` }
-      });
-      return res.data;
-    }
-  });
+
+const { data: stats, isLoading } = useQuery({
+  queryKey: ['global-stats'],
+  queryFn: fetchAdvancedStats,
+  // Optional: refresh stats every 5 minutes
+  staleTime: 1000 * 60 * 5, 
+});
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen space-y-8">

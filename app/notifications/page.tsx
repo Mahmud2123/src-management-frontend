@@ -51,22 +51,26 @@ export default function NotificationsPage() {
   };
 
   const getNotificationColor = (type: string, isRead: boolean) => {
-    const baseColors = {
+    // ✅ FIX: Define the record type for the objects
+    const baseColors: Record<string, string> = {
       'STATUS_CHANGE': 'bg-blue-500 text-white',
       'NEW_COMMENT': 'bg-green-500 text-white',
       'ASSIGNMENT': 'bg-purple-500 text-white',
       'default': 'bg-gray-500 text-white'
     };
     
-    const readColors = {
+    const readColors: Record<string, string> = {
       'STATUS_CHANGE': 'bg-blue-100 text-blue-600',
       'NEW_COMMENT': 'bg-green-100 text-green-600',
       'ASSIGNMENT': 'bg-purple-100 text-purple-600',
       'default': 'bg-gray-100 text-gray-600'
     };
     
-    return isRead ? (readColors[type] || readColors.default) : (baseColors[type] || baseColors.default);
+    // Use the 'default' key if the type doesn't match
+    const colors = isRead ? readColors : baseColors;
+    return colors[type] || colors['default'];
   };
+
 
   const handleNotificationClick = (notification: Notification) => {
     if (notification.complaintId) {
@@ -112,7 +116,7 @@ export default function NotificationsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => refetch()} className="flex items-center gap-2 font-semibold">
+            <Button variant="secondary" onClick={() => refetch()} className="flex items-center gap-2 font-semibold">
               <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
@@ -164,7 +168,7 @@ export default function NotificationsPage() {
                   )}
 
                   {/* Icon */}
-                  <div className={`flex-shrink-0 w-14 h-14 rounded-full ${getNotificationColor(notification.type, notification.read)} flex items-center justify-center shadow-sm`}>
+                  <div className={`flex-shrink-0 w-14 h-14 rounded-full ${getNotificationColor(notification.type, notification.isRead)} flex items-center justify-center shadow-sm`}>
                     {getNotificationIcon(notification.type)}
                   </div>
 

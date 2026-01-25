@@ -110,7 +110,7 @@ const updateStatusMutation = useMutation({
   };
 
   const canManage = user?.role !== 'STUDENT';
-  const isOwner = user?.id === complaint?.createdBy?.id;
+  const isOwner = user?.id === complaint?.author;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -171,7 +171,7 @@ const updateStatusMutation = useMutation({
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()} className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => router.back()} className="flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back
           </Button>
@@ -206,7 +206,7 @@ const updateStatusMutation = useMutation({
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{complaint.description}</p>
               </div>
 
-              {complaint.tags && complaint.tags.length > 0 && (
+              {Array.isArray(complaint.tags) && complaint.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-6 pt-6 border-t border-gray-200">
                   {complaint.tags.map((tag: string, idx: number) => (
                     <span key={idx} className="px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">
@@ -444,7 +444,7 @@ const updateStatusMutation = useMutation({
                           <Save className="w-4 h-4" />
                           Save
                         </Button>
-                        <Button variant="outline" onClick={() => setEditingStatus(false)} className="flex items-center gap-2">
+                        <Button variant="secondary" onClick={() => setEditingStatus(false)} className="flex items-center gap-2">
                           <X className="w-4 h-4" />
                           Cancel
                         </Button>
@@ -456,7 +456,7 @@ const updateStatusMutation = useMutation({
                         setEditingStatus(true);
                         setSelectedStatus(complaint.status);
                       }}
-                      variant="outline"
+                      variant="secondary"
                       className="w-full flex items-center justify-center gap-2"
                     >
                       <Edit className="w-4 h-4" />
@@ -464,29 +464,31 @@ const updateStatusMutation = useMutation({
                     </Button>
                   )}
 
-                  <div className="relative">
-                    <input
-                      type="file"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      id="file-upload"
-                      accept="image/*,.pdf"
-                    />
-                    <label htmlFor="file-upload">
-                      <Button
-                        as="span"
-                        variant="outline"
-                        disabled={uploadingFile}
-                        className="w-full flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Upload className="w-4 h-4" />
-                        {uploadingFile ? 'Uploading...' : 'Upload Attachment'}
-                      </Button>
-                    </label>
+<div className="relative">
+  <input
+    type="file"
+    onChange={handleFileUpload}
+    className="hidden"
+    id="file-upload"
+    accept="image/*,.pdf"
+  />
+  <label htmlFor="file-upload" className="block w-full">
+    <Button
+      type="button" // Change to button type to prevent form submission
+      variant="secondary"
+      disabled={uploadingFile}
+      className="w-full flex items-center justify-center gap-2 cursor-pointer"
+      // Removed as="span"
+    >
+      <Upload className="w-4 h-4" />
+      {uploadingFile ? 'Uploading...' : 'Upload Attachment'}
+    </Button>
+  </label>
                   </div>
                 </div>
               </Card>
             )}
+
 
             {/* Status History */}
             {complaint.statusHistory && complaint.statusHistory.length > 0 && (
@@ -500,9 +502,9 @@ const updateStatusMutation = useMutation({
                   {complaint.statusHistory.map((change: any, idx: number) => (
                     <div key={idx} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        {idx < complaint.statusHistory.length - 1 && (
-                          <div className="w-0.5 h-full bg-gray-200 my-1"></div>
+                        <div className="w-3 h-3 bg-green-500 rounded-full" />
+                        {idx < (complaint.statusHistory?.length || 0) - 1 && (
+                          <div className="w-0.5 h-full bg-gray-200 my-1" />
                         )}
                       </div>
                       <div className="flex-1 pb-4">

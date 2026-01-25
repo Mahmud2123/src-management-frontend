@@ -13,27 +13,21 @@ import {
   MapPin, MessageSquare, Eye, Plus, RefreshCw, AlertCircle, User
 } from 'lucide-react';
 import { Complaint } from '@/types';
+import { fetchComplaints } from '@/lib/api';
+
 
 export default function MyComplaintsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState('');
 
-  const { data: complaints = [], isLoading, refetch } = useQuery({
-    queryKey: ['my-complaints', statusFilter],
-    queryFn: async () => {
-      const response = await axios.get('http://localhost:3001/api/complaints', {
-        params: {
-          roleFilter: 'MINE',
-          status: statusFilter || undefined,
-        },
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('src_token')}`,
-        },
-      });
-      return response.data.data as Complaint[];
-    },
-  });
+const { data: complaints = [], isLoading, refetch } = useQuery({
+  queryKey: ['my-complaints', statusFilter],
+  queryFn: () => fetchComplaints({ 
+    roleFilter: 'MINE', 
+    status: statusFilter || undefined 
+  }),
+});
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -67,9 +61,9 @@ export default function MyComplaintsPage() {
 
   const stats = {
     total: complaints.length,
-    pending: complaints.filter(c => c.status === 'PENDING').length,
-    inProgress: complaints.filter(c => c.status === 'IN_PROGRESS').length,
-    resolved: complaints.filter(c => c.status === 'RESOLVED').length,
+    pending: complaints.filter((c: any) => c.status === 'PENDING').length,
+    inProgress: complaints.filter((c: any) => c.status === 'IN_PROGRESS').length,
+    resolved: complaints.filter((c: any) => c.status === 'RESOLVED').length,
   };
 
   if (isLoading) {
@@ -97,7 +91,7 @@ export default function MyComplaintsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => refetch()} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => refetch()} className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
@@ -161,7 +155,7 @@ export default function MyComplaintsPage() {
         {/* Complaints Grid */}
         {complaints.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {complaints.map((complaint) => (
+            {complaints.map((complaint:any) => (
               <Card
                 key={complaint.id}
                 className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 overflow-hidden"

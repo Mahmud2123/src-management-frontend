@@ -235,6 +235,11 @@ export const resetUserPassword = async (userId: string) => {
 /**
  * ADVANCED STATISTICS
  */
+
+export const fetchGlobalStats = async () => {
+  const response = await axiosInstance.get('/complaints/stats/global');
+  return response.data;
+};
 export const fetchAdvancedStats = async () => {
   const res = await axiosInstance.get('/complaints/advanced-statistics');
   return res.data;

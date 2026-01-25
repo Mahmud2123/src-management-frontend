@@ -218,10 +218,10 @@ export default function UsersManagementPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
             { label: 'Total Users', value: users.length, color: 'bg-blue-100 text-blue-700', icon: Users },
-            { label: 'Students', value: users.filter((u) => u.role === 'STUDENT').length, color: 'bg-gray-100 text-gray-700', icon: GraduationCap },
-            { label: 'Class Reps', value: users.filter((u) => u.role === 'CLASS_REP').length, color: 'bg-orange-100 text-orange-700', icon: Shield },
-            { label: 'SRC Members', value: users.filter((u) => u.role === 'SRC_MEMBER').length, color: 'bg-green-100 text-green-700', icon: Shield },
-            { label: 'Admins', value: users.filter((u) => u.role === 'ADMIN').length, color: 'bg-purple-100 text-purple-700', icon: Shield },
+            { label: 'Students', value: users.filter((u:any) => u.role === 'STUDENT').length, color: 'bg-gray-100 text-gray-700', icon: GraduationCap },
+            { label: 'Class Reps', value: users.filter((u:any) => u.role === 'CLASS_REP').length, color: 'bg-orange-100 text-orange-700', icon: Shield },
+            { label: 'SRC Members', value: users.filter((u:any) => u.role === 'SRC_MEMBER').length, color: 'bg-green-100 text-green-700', icon: Shield },
+            { label: 'Admins', value: users.filter((u: any) => u.role === 'ADMIN').length, color: 'bg-purple-100 text-purple-700', icon: Shield },
           ].map((stat, idx) => (
             <Card key={idx} className="p-4 border-0 shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-3">
@@ -282,7 +282,7 @@ export default function UsersManagementPage() {
               </thead>
               <tbody>
                 {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
+                  filteredUsers.map((user:any) => (
                     <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">

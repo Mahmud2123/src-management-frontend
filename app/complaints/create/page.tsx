@@ -6,11 +6,8 @@ import { z } from 'zod';
 import { fetchCategories,createComplaint } from '@/lib/api';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/Button';
-import { Select } from '@/components/Select';
-import { Input } from '@/components/Input';
 import { Card } from '@/components/Card';
 import { toast } from 'sonner';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {

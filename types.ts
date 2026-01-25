@@ -18,40 +18,30 @@ export interface User {
     id: string;
     name: string;
   }
-  
   export interface Complaint {
     id: string;
     title: string;
     description: string;
-    status: ComplaintStatus;
-    priority: Priority;
-    weeklyTrend: { day: string; count: number }[];
-    // New fields from your Prisma schema/Controllers
+    status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
+    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
     isAnonymous: boolean;
     location?: string | null;
     viewCount: number;
-    
-    // Relations
-    author: User | null;     // This represents 'createdBy' (User who made it)
-    authorId?: string | null;
-    
-    assignedTo: User | null;
-    assignedToId?: string | null;
-    
-    category: Category;
-    categoryId: string;
-  
-    // Timestamps
+    tags?: string[]; // ✅ Added this
+    author: any;
+    category: any;
     createdAt: string;
     updatedAt: string;
     resolvedAt?: string | null;
-    deletedAt?: string | null;
-  
-    // Nested Data
-    comments?: Comment[];      // Added for the comments array
-    attachments?: Attachment[];
+    comments?: any[];
+    attachments?: any[];
+    statusHistory?: { // ✅ Added this
+      fromStatus: string;
+      toStatus: string;
+      changedBy: string;
+      changedAt: string;
+    }[];
   }
-  
   export interface Comment {
     id: string;
     content: string;
