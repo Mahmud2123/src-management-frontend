@@ -106,7 +106,7 @@ export default function CreateComplaintPage() {
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => router.back()}
             className="flex items-center gap-2"
           >
@@ -388,7 +388,7 @@ export default function CreateComplaintPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => router.back()}
                 className="flex-1 sm:flex-none px-8"
               >
