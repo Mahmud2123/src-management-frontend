@@ -37,14 +37,14 @@ export default function AccessDenied() {
           
           <div className="flex gap-3">
             <Button 
-              variant="outline" 
+              variant="secondary" 
               onClick={() => window.history.back()}
               className="flex-1 py-6 rounded-xl"
             >
               Go Back
             </Button>
             <Button 
-              variant="outline" 
+              variant="secondary" 
               onClick={logout}
               className="flex-1 py-6 rounded-xl text-red-600 hover:bg-red-50 border-red-100"
             >
