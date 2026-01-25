@@ -48,7 +48,7 @@ export default function ProfilePage() {
             </div>
             <div className="p-3 bg-gray-50 rounded-xl">
               <p className="text-xs text-gray-500">Student ID</p>
-              <p className="font-medium">{user?.studentId || 'N/A'}</p>
+              <p className="font-medium">{(user as any)?.studentId || 'N/A'}</p>
             </div>
           </div>
         </Card>

@@ -3,6 +3,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
+    studentId?: string;
     role: 'STUDENT' | 'SRC_MEMBER' | 'SRC_EXECUTIVE' | 'ADMIN' | 'CLASS_REP';
     department?:{
       name:string;
