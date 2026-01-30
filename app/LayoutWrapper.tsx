@@ -1,15 +1,28 @@
 'use client';
 
 import { useAuth } from '@/providers/auth';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Add useRouter
+import { useEffect } from 'react'; // Add useEffect
 import Sidebar from '@/components/Sidebar';
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
 
-  // Don't show sidebar on login/register pages
   const isAuthPage = pathname === '/' || pathname === '/register';
+
+  // PROTECT ROUTES: If user is not logged in and tries to access a dashboard page
+  useEffect(() => {
+    if (!isLoading && !user && !isAuthPage) {
+      router.push('/'); // Force redirect to root (Auth) instead of /login
+    }
+  }, [user, isLoading, isAuthPage, router]);
+
+  // Show a loading state so the user doesn't see a "flicker" of the dashboard
+  if (isLoading) {
+    return <div className="h-screen w-screen flex items-center justify-center bg-white">Loading...</div>;
+  }
 
   if (isAuthPage || !user) {
     return <>{children}</>;

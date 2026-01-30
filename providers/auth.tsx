@@ -85,7 +85,5 @@ export const useAuth = () => {
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
-function setIsLoading(arg0: boolean) {
-  throw new Error('Function not implemented.');
-}
+
 
