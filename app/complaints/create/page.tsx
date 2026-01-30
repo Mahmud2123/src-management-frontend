@@ -15,7 +15,7 @@ import {
   FileText, AlertCircle, MapPin, Tag, Lock, Upload, X,
   CheckCircle, ArrowLeft, Sparkles, Shield, Info, Lightbulb
 } from 'lucide-react';
-
+import { checkDuplicateComplaints } from "@/lib/api";
 
 const schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -35,7 +35,7 @@ export default function CreateComplaintPage() {
   // 2. Inside your component:
 const [title, setTitle] = useState('');
 const [duplicates, setDuplicates] = useState([]);
-const debouncedTitle = useDebounce(title, 500); // Wait 500ms after user stops typing
+const debouncedTitle = useDebounce(title, 500); // Wait 500ms after user stops type
 
 
   const { data: categories = [] } = useQuery({
@@ -43,17 +43,26 @@ const debouncedTitle = useDebounce(title, 500); // Wait 500ms after user stops t
     queryFn: fetchCategories,
   });
 
+  
   useEffect(() => {
-    const fetchDuplicates = async () => {
-      if (debouncedTitle.length > 4) {
-        const res = await api.get(`/complaints/check-duplicates?q=${debouncedTitle}`);
-        setDuplicates(res.data);
+    const handleFetch = async () => {
+      // Only search if title is long enough to be meaningful
+      if (debouncedTitle && debouncedTitle.length > 4) {
+        try {
+          const data = await checkDuplicateComplaints(debouncedTitle);
+          setDuplicates(data);
+        } catch (error) {
+          console.error("Failed to fetch duplicates", error);
+          setDuplicates([]);
+        }
       } else {
         setDuplicates([]);
       }
     };
-    fetchDuplicates();
+    
+    handleFetch();
   }, [debouncedTitle]);
+
   const { register, handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {

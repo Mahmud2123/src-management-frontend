@@ -336,3 +336,10 @@ export const fetchAdvancedStats = async () => {
   const res = await axiosInstance.get('/complaints/advanced-statistics');
   return res.data;
 };
+
+export const checkDuplicateComplaints = async (query: string) => {
+  const res = await axiosInstance.get('/complaints/check-duplicates', {
+    params: { q: query },
+  });
+  return res.data; 
+};
