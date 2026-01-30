@@ -7,11 +7,9 @@ import { useAuth } from '@/providers/auth';
 import { useRouter } from 'next/navigation';
 import LoadingState from '@/components/LoadingState'; 
 import { useQuery } from '@tanstack/react-query';
-<<<<<<< HEAD
-import { fetchUserActivity } from '@/lib/api';
-=======
+
 import { fetchCategories, fetchUserActivity } from '@/lib/api';
->>>>>>> Updated new chnaged
+
 import { formatDistanceToNow } from 'date-fns'; 
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
@@ -38,16 +36,14 @@ export default function DashboardPage() {
     queryKey: ['recent-activity'],
     queryFn: () => fetchUserActivity(),
   });
-<<<<<<< HEAD
 
-=======
    
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
   })
   
->>>>>>> Updated new chnaged
+
   if (isLoading) {
     return <LoadingState message="Loading dashboard statistics..." />;
   }

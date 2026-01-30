@@ -240,16 +240,10 @@ export const resetUserPassword = async (userId: string) => {
 /**
  * COMPLAINTS (Extended)
  */
-<<<<<<< HEAD
  // ✅ ADD THIS: Specifically for the Dashboard Activity Feed
 export const fetchRecentActivity = async (limit: number = 5) => {
   const res = await axiosInstance.get('/notifications', { 
     params: { limit } 
-=======
-export const checkDuplicateComplaints = async (query: string) => {
-  const res = await axiosInstance.get(`/complaints/check-duplicates`, {
-    params: { q: query }
->>>>>>> Updated new chnaged
   });
   return res.data;
 };

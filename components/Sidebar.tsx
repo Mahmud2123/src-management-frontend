@@ -43,7 +43,7 @@ export default function Sidebar() {
       path: '/dashboard',
       show: true,
     },
-<<<<<<< HEAD
+ 
    // Inside your navigation array:
 {
   name: 'All Complaints',
@@ -51,14 +51,14 @@ export default function Sidebar() {
   path: '/complaints',
   show: isSRC, 
 },
-=======
+
     {
       name: 'All Complaints',
       icon: FileText,
       path: '/complaints?filter=ALL',
       show: isSRC,
     },
->>>>>>> Updated new chnaged
+ 
     {
       name: 'My Submissions',
       icon: UserCircle,
@@ -95,10 +95,8 @@ export default function Sidebar() {
       icon: Bell,
       path: '/notifications',
       show: true,
-<<<<<<< HEAD
+
       badge: unreadCount, // This should come from real notification count
-=======
->>>>>>> Updated new chnaged
     },
     {
       name: 'Global Statistics',
