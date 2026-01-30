@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -9,6 +9,7 @@ import { useAuth } from '@/providers/auth';
 import { toast } from 'sonner';
 import { addStudentByClassRep, fetchUserActivity,fetchMyStudents, fetchFaculties, fetchDepartments } from '@/lib/api';
 import axios from 'axios';
+
 
 import {
   GraduationCap, UserPlus, Mail, Phone, Users, Building,
@@ -88,6 +89,20 @@ const { data: departments = [] } = useQuery({
     },
   });
 
+  useEffect(() => {
+    // 1. Safe guard: Check if user and department exist
+    if (user && user.department) {
+      // 2. We cast to 'any' or our custom interface if the Provider type is too narrow
+      const dept = user.department as any; 
+  
+      setFormData(prev => ({
+        ...prev,
+        // Use optional chaining or fallback to empty strings
+        facultyId: dept.facultyId || '',
+        departmentId: dept.id || ''
+      }));
+    }
+  }, [user]);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.studentId || !formData.email || !formData.facultyId || !formData.departmentId) {
@@ -344,51 +359,23 @@ const { data: departments = [] } = useQuery({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Faculty <span className="text-red-500">*</span>
-                  </label>
-                  <select
-  value={formData.facultyId}
-  onChange={(e) => {
-    setFormData({ ...formData, facultyId: e.target.value, departmentId: '' });
-  }}
-  required
-  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none transition-all"
->
-  <option value="">Select Faculty</option>
-  {/* Add the ? check before .map */}
-  {Array.isArray(faculties) && faculties.map((faculty: any) => (
-    <option key={faculty.id} value={faculty.id}>
-      {faculty.name} ({faculty.code})
-    </option>
-  ))}
-</select>
-                </div>
+  {/* Faculty Display */}
+  <div className="space-y-2">
+    <label className="block text-sm font-semibold text-gray-700">Faculty</label>
+    <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-600 font-medium">
+      {/* Use optional chaining ?. to prevent the "possibly undefined" crash */}
+      {(user?.department as any)?.faculty?.name || "N/A"}
+    </div>
+  </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Department <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.departmentId}
-                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                    required
-                    disabled={!formData.facultyId}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none transition-all disabled:bg-gray-200 disabled:cursor-not-allowed"
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map((dept: any) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name} ({dept.code})
-                      </option>
-                    ))}
-                  </select>
-                  {!formData.facultyId && (
-                    <p className="text-xs text-gray-500">Please select a faculty first</p>
-                  )}
-                </div>
-              </div>
+  {/* Department Display */}
+  <div className="space-y-2">
+    <label className="block text-sm font-semibold text-gray-700">Department</label>
+    <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-600 font-medium">
+      {user?.department?.name || "N/A"}
+    </div>
+  </div>
+</div>
 
               <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">

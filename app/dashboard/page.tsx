@@ -7,7 +7,11 @@ import { useAuth } from '@/providers/auth';
 import { useRouter } from 'next/navigation';
 import LoadingState from '@/components/LoadingState'; 
 import { useQuery } from '@tanstack/react-query';
+<<<<<<< HEAD
 import { fetchUserActivity } from '@/lib/api';
+=======
+import { fetchCategories, fetchUserActivity } from '@/lib/api';
+>>>>>>> Updated new chnaged
 import { formatDistanceToNow } from 'date-fns'; 
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
@@ -34,7 +38,16 @@ export default function DashboardPage() {
     queryKey: ['recent-activity'],
     queryFn: () => fetchUserActivity(),
   });
+<<<<<<< HEAD
 
+=======
+   
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+  })
+  
+>>>>>>> Updated new chnaged
   if (isLoading) {
     return <LoadingState message="Loading dashboard statistics..." />;
   }
@@ -61,11 +74,21 @@ const getActivityStyle = (type: string) => {
       </div>
     );
   }
+      
+     // 2. Create a lookup object for fast searching
+// maps 'id' -> 'name'
+const categoryMap = categories.reduce((acc: any, cat: any) => {
+  acc[cat.value] = cat.label;
+  return acc;
+}, {});
+    
 
-  const categoryData = data?.byCategory?.map((item: { categoryId: string; _count: number }) => ({
-    name: item.categoryId,
-    value: item._count,
-  })) || [];
+// 3. Update your categoryData mapping logic
+const categoryData = data?.byCategory?.map((item: { categoryId: string; _count: number }) => ({
+  // ✅ Look up the name using the ID, fallback to ID if not found
+  name: categoryMap[item.categoryId] || item.categoryId, 
+  value: item._count,
+})) || [];
 
   const priorityData = data?.byPriority?.map((item: { priority: string; _count: number }) => ({
     name: item.priority,
@@ -122,6 +145,7 @@ const getActivityStyle = (type: string) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 p-6 space-y-6">
+     <div className="max-w-7xl mx-auto space-y-6"> {/* Change max-w here */}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -148,16 +172,19 @@ const getActivityStyle = (type: string) => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Complaints"
-          value={data?.total ?? 0}
-          icon={FileText}
-          color="text-blue-600"
-          bgColor="bg-blue-600"
-          trend="up"
-          trendValue="+12%"
-          onClick={() => router.push('/complaints')}
-        />
+      <StatCard
+    title={['STUDENT', 'CLASS_REP'].includes(user?.role) ? "My Submissions" : "Total Complaints"}
+    value={data?.total ?? 0}
+    icon={FileText}
+    color="text-blue-600"
+    bgColor="bg-blue-600"
+    onClick={() => {
+      // Ensure redirect goes to the right filter
+      const isStaff = ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user?.role || '');
+      const filter = isStaff ? 'ALL' : 'MINE';
+      router.push(`/complaints?filter=${filter}`);
+    }}
+  />
         <StatCard
           title="Pending Review"
           value={data?.pending ?? 0}
@@ -291,14 +318,21 @@ const getActivityStyle = (type: string) => {
               <BarChart className="w-5 h-5 text-blue-700" />
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={categoryData}>
+         <ResponsiveContainer width="100%" height={350}>
+  <BarChart 
+    data={categoryData} 
+    margin={{ top: 10, right: 30, left: 0, bottom: 20 }} // Adds padding inside the card
+  >
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis 
                 dataKey="name" 
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-                axisLine={{ stroke: '#e5e7eb' }}
-              />
+                tick={{ fill: '#6b7280', fontSize: 10 }} // Smaller font for long names
+                 axisLine={{ stroke: '#e5e7eb' }}
+                  interval={0} // Force show all names
+                   height={60} // Give space for rotated labels
+                   angle={-15}
+                      tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 10)}...` : value} // Optional: truncate long names
+                     />
               <YAxis 
                 tick={{ fill: '#6b7280', fontSize: 12 }}
                 axisLine={{ stroke: '#e5e7eb' }}
@@ -395,6 +429,7 @@ const getActivityStyle = (type: string) => {
   </div>
 </Card>
       </div>
+    </div>
     </div>
   );
 }

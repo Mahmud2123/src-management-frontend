@@ -4,9 +4,9 @@ import { useAuth } from '@/providers/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { fetchNotifications } from '@/lib/api';
 import { 
-  Home, FileText, Users, BarChart3, Bell, Settings, 
+  Home, FileText, Users, Bell, Settings, 
   LogOut, Shield, Plus, Menu, X, ChevronRight, Activity,
-  UserCircle, TrendingUp, GraduationCap, User
+  UserCircle, TrendingUp, GraduationCap, User, Lightbulb, ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -32,8 +32,8 @@ export default function Sidebar() {
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   const isAdmin = user.role === 'ADMIN';
-  const isSRC = user.role === 'SRC_MEMBER' || user.role === 'SRC_EXECUTIVE' || user.role === 'ADMIN';
-  const isStudent = user.role === 'STUDENT';
+  const isSRC = ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role);
+  const isPersonalUser = ['STUDENT', 'CLASS_REP'].includes(user.role);
   const isClassRep = user.role === 'CLASS_REP';
 
   const navigation = [
@@ -43,6 +43,7 @@ export default function Sidebar() {
       path: '/dashboard',
       show: true,
     },
+<<<<<<< HEAD
    // Inside your navigation array:
 {
   name: 'All Complaints',
@@ -50,18 +51,38 @@ export default function Sidebar() {
   path: '/complaints',
   show: isSRC, 
 },
+=======
     {
-      name: 'My Complaints',
+      name: 'All Complaints',
+      icon: FileText,
+      path: '/complaints?filter=ALL',
+      show: isSRC,
+    },
+>>>>>>> Updated new chnaged
+    {
+      name: 'My Submissions',
       icon: UserCircle,
-      path: '/my-complaints',
-      show: isStudent,
+      path: '/complaints?filter=MINE',
+      show: isPersonalUser,
     },
     {
-      name: 'Submit Complaint',
+      name: 'Submit Issue',
       icon: Plus,
       path: '/complaints/create',
-      show: isStudent || isClassRep,
+      show: isPersonalUser,
       highlight: true,
+    },
+    {
+      name: 'Suggestion Box',
+      icon: Lightbulb,
+      path: '/suggestions',
+      show: true,
+    },
+    {
+      name: 'Verify Complaints',
+      icon: ShieldCheck,
+      path: '/moderation',
+      show: isSRC,
     },
     {
       name: 'Class Portal',
@@ -74,7 +95,10 @@ export default function Sidebar() {
       icon: Bell,
       path: '/notifications',
       show: true,
+<<<<<<< HEAD
       badge: unreadCount, // This should come from real notification count
+=======
+>>>>>>> Updated new chnaged
     },
     {
       name: 'Global Statistics',
@@ -114,13 +138,24 @@ export default function Sidebar() {
     router.push('/');
   };
 
-  const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
+  const isActive = (path: string) => {
+    // Special handling for complaints with filters
+    if (path.includes('/complaints?filter=')) {
+      if (pathname === '/complaints') {
+        const currentFilter = new URLSearchParams(window.location.search).get('filter');
+        const pathFilter = path.split('filter=')[1];
+        return currentFilter === pathFilter;
+      }
+    }
+    return pathname === path || pathname.startsWith(path + '/');
+  };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'ADMIN': return 'bg-purple-100 text-purple-700 border-purple-200';
       case 'SRC_EXECUTIVE': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'SRC_MEMBER': return 'bg-green-100 text-green-700 border-green-200';
+      case 'CLASS_REP': return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'STUDENT': return 'bg-gray-100 text-gray-700 border-gray-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -180,13 +215,6 @@ export default function Sidebar() {
               <span className={`flex-1 font-medium ${active ? 'text-white' : ''}`}>
                 {item.name}
               </span>
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
-                  active ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
-                }`}>
-                  {item.badge}
-                </span>
-              )}
               {active && <ChevronRight className="w-4 h-4 text-white" />}
             </button>
           );

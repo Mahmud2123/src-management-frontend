@@ -6,11 +6,17 @@ export interface User {
     studentId?: string;
     role: 'STUDENT' | 'SRC_MEMBER' | 'SRC_EXECUTIVE' | 'ADMIN' | 'CLASS_REP';
     department?:{
+      id: string;
       name:string;
       code:string;
-    }
+    },
+    facultyId: string; 
+    faculty?: {
+      id: string;
+      name: string;
+    };
 
-  }
+}
   
   export type ComplaintStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED';
   export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
@@ -36,6 +42,7 @@ export interface User {
     resolvedAt?: string | null;
     comments?: any[];
     attachments?: any[];
+    moderationNotes?:string;
     statusHistory?: { // ✅ Added this
       fromStatus: string;
       toStatus: string;

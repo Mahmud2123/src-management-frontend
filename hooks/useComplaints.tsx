@@ -7,6 +7,7 @@ interface UseComplaintsParams {
   categoryId?: string;
   roleFilter?: 'ALL' | 'MINE';
   limit?: number;
+  search?: string;
 }
 
 // hooks/useComplaints.ts

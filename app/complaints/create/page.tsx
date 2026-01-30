@@ -7,13 +7,15 @@ import { fetchCategories,createComplaint } from '@/lib/api';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText, AlertCircle, MapPin, Tag, Lock, Upload, X,
-  CheckCircle, ArrowLeft, Sparkles, Shield, Info
+  CheckCircle, ArrowLeft, Sparkles, Shield, Info, Lightbulb
 } from 'lucide-react';
+
 
 const schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -30,12 +32,28 @@ type FormData = z.infer<typeof schema>;
 export default function CreateComplaintPage() {
   const router = useRouter();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  // 2. Inside your component:
+const [title, setTitle] = useState('');
+const [duplicates, setDuplicates] = useState([]);
+const debouncedTitle = useDebounce(title, 500); // Wait 500ms after user stops typing
+
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
   });
 
+  useEffect(() => {
+    const fetchDuplicates = async () => {
+      if (debouncedTitle.length > 4) {
+        const res = await api.get(`/complaints/check-duplicates?q=${debouncedTitle}`);
+        setDuplicates(res.data);
+      } else {
+        setDuplicates([]);
+      }
+    };
+    fetchDuplicates();
+  }, [debouncedTitle]);
   const { register, handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -391,6 +409,30 @@ export default function CreateComplaintPage() {
               >
                 Cancel
               </Button>
+              {duplicates.length > 0 && (
+  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl animate-in fade-in slide-in-from-top-2">
+    <div className="flex items-center gap-2 text-blue-800 font-bold mb-2 text-sm">
+      <Info className="w-4 h-4" /> Similar existing reports found:
+    </div>
+    <div className="space-y-2">
+      {duplicates.map((item: any) => (
+        <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-blue-100 shadow-sm">
+          <span className="text-sm font-medium text-gray-700">{item.title}</span>
+          <button 
+            type="button"
+            onClick={() => router.push(`/complaints/${item.id}`)}
+            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            View & Join
+          </button>
+        </div>
+      ))}
+    </div>
+    <p className="text-[10px] text-blue-600 mt-3">
+      If your issue is the same as above, please view and comment there instead of creating a duplicate.
+    </p>
+  </div>
+)}
               <Button
                 type="submit"
                 disabled={createMutation.isPending}

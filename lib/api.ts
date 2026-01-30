@@ -2,13 +2,13 @@ import { Complaint, ComplaintStats } from '@/types';
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  // ✅ This checks for the env variable first, falls back to local if not found
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
 axiosInstance.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('src_token');
@@ -23,8 +23,9 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      if (!window.location.pathname.includes('/')) {
-        // Optional: logic to clear local storage if token is expired
+      if (!window.location.pathname.includes('/login')) {
+        localStorage.removeItem('src_token');
+        window.location.href = '/login';
       }
     }
     
@@ -97,10 +98,15 @@ export const fetchComplaintStats = async (): Promise<ComplaintStats> => {
  * CATEGORIES
  */
 export const fetchCategories = async () => {
-  const res = await axiosInstance.get('/complaints/categories-dropdown');
-  return res.data as { label: string; value: string }[];
+  // 1. Fixed the path to '/categories/names'
+  const res = await axiosInstance.get('/categories/names');
+  
+  // 2. Map the data from { id, name } to { value, label }
+  return res.data.map((cat: { id: string; name: string }) => ({
+    label: cat.name,
+    value: cat.id
+  }));
 };
-
 /**
  * COMMENTS
  */
@@ -121,8 +127,13 @@ export const fetchNotifications = async () => {
 };
 
 export const markNotificationRead = async (notificationId: string) => {
-  const res = await axiosInstance.patch('/notifications/read', { notificationId });
+  const res = await axiosInstance.patch(`/notifications/${notificationId}/read`);
   return res.data;
+};
+
+export const markAllRead = async () => {
+  const { data } = await axiosInstance.patch('/notifications/read-all');
+  return data;
 };
 
 /**
@@ -158,15 +169,11 @@ export const deleteUser = async (userId: string) => {
   return res.data;
 };
 
-/**
- * USERS (Admin Only)
- */
 export const createUser = async (data: any) => {
-
-  // ✅ Should be:
   const res = await axiosInstance.post('/users/create', data);
   return res.data;
 };
+
 export const fetchFaculties = async () => {
   const res = await axiosInstance.get('/users/faculties');
   return res.data;
@@ -194,9 +201,7 @@ export const exportUsers = async (format: 'csv' | 'json') => {
 /**
  * CLASS REP - Student Management
  */
-// Change this function
 export const addStudentByClassRep = async (data: any) => {
-  // Use the existing 'create' endpoint instead of the non-existent 'class-rep/add-student'
   const res = await axiosInstance.post('/users/create', data); 
   return res.data;
 };
@@ -233,20 +238,106 @@ export const resetUserPassword = async (userId: string) => {
 };
 
 /**
- * ADVANCED STATISTICS
+ * COMPLAINTS (Extended)
  */
+<<<<<<< HEAD
  // ✅ ADD THIS: Specifically for the Dashboard Activity Feed
 export const fetchRecentActivity = async (limit: number = 5) => {
   const res = await axiosInstance.get('/notifications', { 
     params: { limit } 
+=======
+export const checkDuplicateComplaints = async (query: string) => {
+  const res = await axiosInstance.get(`/complaints/check-duplicates`, {
+    params: { q: query }
+>>>>>>> Updated new chnaged
   });
   return res.data;
 };
 
-export const fetchGlobalStats = async () => {
-  const response = await axiosInstance.get('/complaints/stats/global');
-  return response.data;
+/**
+ * SUGGESTIONS & VOTING
+ */
+export const fetchSuggestions = async () => {
+  const res = await axiosInstance.get('/suggestions');
+  return res.data;
 };
+
+export const createSuggestion = async (data: { 
+  title: string; 
+  description: string; 
+  isAnonymous: boolean 
+}) => {
+  const res = await axiosInstance.post('/suggestions', data);
+  return res.data;
+};
+
+export const toggleSuggestionUpvote = async (suggestionId: string) => {
+  const res = await axiosInstance.post(`/suggestions/${suggestionId}/upvote`);
+  return res.data;
+};
+
+export const fetchSuggestionById = async (id: string) => {
+  const { data } = await axiosInstance.get(`/suggestions/${id}`);
+  return data;
+};
+
+export const addSuggestionComment = async (id: string, content: string) => {
+  const { data } = await axiosInstance.post(`/suggestions/${id}/comments`, { content });
+  return data;
+};
+
+export const verifySuggestion = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+  const { data } = await axiosInstance.patch(`/suggestions/${id}/status`, { status });
+  return data;
+};
+
+/**
+ * MODERATION (For SRC/Class Reps)
+ */
+export const fetchModerationQueue = async () => {
+  const { data } = await axiosInstance.get('/moderation/pending');
+  return data;
+};
+
+/**
+ * Complaints: SRC Verifies a complaint, moving it to IN_PROGRESS
+ */
+export const verifyComplaint = async (id: string) => {
+  const { data } = await axiosInstance.patch(`/complaints/${id}/status`, { 
+    status: 'IN_PROGRESS' 
+  });
+  return data;
+};
+
+/**
+ * Complaints: SRC Rejects a complaint
+ */
+export const rejectComplaint = async (id: string, reason?: string) => {
+  const { data } = await axiosInstance.patch(`/complaints/${id}/status`, { 
+    status: 'REJECTED',
+    rejectionReason: reason
+  });
+  return data;
+};
+
+/**
+ * Suggestions: SRC Approves a student suggestion
+ */
+export const verifySuggestionStatus = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+  const { data } = await axiosInstance.patch(`/suggestions/${id}/status`, { 
+    status 
+  });
+  return data;
+};
+
+/**
+ * GLOBAL STATISTICS (for SRC/Admin)
+ */
+export const fetchGlobalStats = async () => {
+  const res = await axiosInstance.get('/complaints/global-stats');
+  return res.data;
+};
+
 export const fetchAdvancedStats = async () => {
   const res = await axiosInstance.get('/complaints/advanced-statistics');
   return res.data;

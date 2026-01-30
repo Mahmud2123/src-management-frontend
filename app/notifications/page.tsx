@@ -2,241 +2,144 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/Card';
-import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
-import { useRouter } from 'next/navigation';
-import { fetchNotifications, markNotificationRead } from '@/lib/api';
-import { toast } from 'sonner';
-import {
-  Bell, Check, CheckCheck, Eye, MessageSquare, AlertCircle,
-  TrendingUp, UserPlus, RefreshCw, Trash2, Clock
+import { 
+  Bell, MessageSquare, ShieldCheck, 
+  Lightbulb, AlertTriangle, Inbox
 } from 'lucide-react';
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-  complaintId?: string;
-}
+import { fetchNotifications, markNotificationRead } from '@/lib/api';
+import LoadingState from '@/components/LoadingState';
+import { formatDistanceToNow } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 export default function NotificationsPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
-  const { data: notifications = [], isLoading, refetch } = useQuery({
+  const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
-    queryFn: fetchNotifications,
+    queryFn: fetchNotifications
   });
 
-  const markAsReadMutation = useMutation({
-    mutationFn: markNotificationRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success('Notification marked as read');
-    },
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
-  const unreadCount = notifications.filter((n: Notification) => !n.isRead).length;
-
-  const getNotificationIcon = (type: string) => {
+  const getNotifConfig = (type: string) => {
     switch (type) {
-      case 'STATUS_CHANGE': return <TrendingUp className="w-5 h-5" />;
-      case 'NEW_COMMENT': return <MessageSquare className="w-5 h-5" />;
-      case 'ASSIGNMENT': return <UserPlus className="w-5 h-5" />;
-      default: return <Bell className="w-5 h-5" />;
+      case 'NEW_COMPLAINT': 
+        return { icon: <AlertTriangle className="w-5 h-5 text-orange-600" />, bg: 'bg-orange-50', label: 'Complaint' };
+      case 'NEW_SUGGESTION': 
+      case 'SUGGESTION_STATUS_CHANGE':
+        return { icon: <Lightbulb className="w-5 h-5 text-yellow-600" />, bg: 'bg-yellow-50', label: 'Suggestion' };
+      case 'STATUS_CHANGE': 
+        return { icon: <ShieldCheck className="w-5 h-5 text-green-600" />, bg: 'bg-green-50', label: 'Update' };
+      case 'NEW_COMMENT': 
+        return { icon: <MessageSquare className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50', label: 'Reply' };
+      default: 
+        return { icon: <Bell className="w-5 h-5 text-gray-600" />, bg: 'bg-gray-50', label: 'System' };
     }
   };
 
-  const getNotificationColor = (type: string, isRead: boolean) => {
-    // ✅ FIX: Define the record type for the objects
-    const baseColors: Record<string, string> = {
-      'STATUS_CHANGE': 'bg-blue-500 text-white',
-      'NEW_COMMENT': 'bg-green-500 text-white',
-      'ASSIGNMENT': 'bg-purple-500 text-white',
-      'default': 'bg-gray-500 text-white'
-    };
-    
-    const readColors: Record<string, string> = {
-      'STATUS_CHANGE': 'bg-blue-100 text-blue-600',
-      'NEW_COMMENT': 'bg-green-100 text-green-600',
-      'ASSIGNMENT': 'bg-purple-100 text-purple-600',
-      'default': 'bg-gray-100 text-gray-600'
-    };
-    
-    // Use the 'default' key if the type doesn't match
-    const colors = isRead ? readColors : baseColors;
-    return colors[type] || colors['default'];
-  };
-
-
-  const handleNotificationClick = (notification: Notification) => {
-    if (notification.complaintId) {
-      router.push(`/complaints/${notification.complaintId}`);
+  const handleNotificationClick = (notif: any) => {
+    // Mark as read
+    if (!notif.isRead) {
+      markReadMutation.mutate(notif.id);
     }
+
+    // Smart routing based on notification type and referenceId
+    const refId = notif.referenceId;
+    const type = notif.type;
+
+    if (!refId) {
+      console.warn('No referenceId found for this notification');
+      return;
+    }
+
+    let targetPath = '';
+
+    // Route to appropriate page based on notification type
+    if (type === 'NEW_SUGGESTION' || type === 'SUGGESTION_STATUS_CHANGE') {
+      targetPath = `/suggestions/${refId}`;
+    } else if (type === 'NEW_COMPLAINT' || type === 'STATUS_CHANGE' || type === 'NEW_COMMENT') {
+      targetPath = `/complaints/${refId}`;
+    } else {
+      // Fallback for unknown types
+      targetPath = '/dashboard';
+    }
+
+    router.push(targetPath);
   };
 
-  const markAllAsRead = () => {
-    notifications
-      .filter((n: Notification) => !n.isRead)
-      .forEach((n: Notification) => {
-        markAsReadMutation.mutate(n.id);
-      });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-600 font-medium">Loading notifications...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingState />;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50/50 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-xl shadow-sm">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Bell className="w-8 h-8 text-green-600" />
-              Notifications
-              {unreadCount > 0 && (
-                <Badge className="bg-red-500 text-white px-3 py-1 text-sm font-semibold">
-                  {unreadCount}
-                </Badge>
-              )}
-            </h1>
-            <p className="text-gray-600 mt-1 font-medium">Stay updated with your complaint activity</p>
+        
+        {/* Modern Header */}
+        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-green-700 rounded-2xl flex items-center justify-center shadow-lg shadow-green-900/20">
+              <Bell className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-gray-900 tracking-tight">Updates</h1>
+              <p className="text-gray-500 font-bold text-sm italic">Latest activities from the portal</p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={() => refetch()} className="flex items-center gap-2 font-semibold">
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </Button>
-            {unreadCount > 0 && (
-              <Button onClick={markAllAsRead} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 font-semibold">
-                <CheckCheck className="w-4 h-4" />
-                Mark All Read
-              </Button>
-            )}
-          </div>
+          <Badge className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-black text-xs">
+            {notifications.filter((n: any) => !n.isRead).length} UNREAD
+          </Badge>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[
-            { label: 'Total', value: notifications.length, color: 'bg-blue-500', icon: Bell },
-            { label: 'Unread', value: unreadCount, color: 'bg-red-500', icon: Eye },
-            { label: 'Read', value: notifications.length - unreadCount, color: 'bg-green-500', icon: CheckCheck },
-          ].map((stat, idx) => (
-            <Card key={idx} className="p-4 border-0 shadow-sm bg-white">
-              <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${stat.color}`}>
-                  <stat.icon className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
+        <div className="space-y-3">
+          {notifications.length > 0 ? (
+            notifications.map((notif: any) => {
+              const config = getNotifConfig(notif.type);
+              return (
+                <Card 
+                  key={notif.id} 
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`p-5 border-0 shadow-sm rounded-2xl flex items-start gap-4 transition-all hover:translate-x-1 cursor-pointer ${
+                    notif.isRead ? 'bg-white/60 opacity-75' : 'bg-white ring-1 ring-green-100'
+                  }`}
+                >
+                  <div className={`p-3 rounded-xl ${config.bg} mt-1`}>
+                    {config.icon}
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{config.label}</span>
+                        {!notif.isRead && <div className="w-2 h-2 rounded-full bg-green-600 animate-pulse" />}
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400">
+                        {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                    
+                    <h3 className="font-bold text-gray-900 mt-0.5">{notif.title}</h3>
+                    <p className="text-sm text-gray-600 font-medium line-clamp-2">{notif.message}</p>
+                    
+                    {notif.metadata?.moderationNotes && (
+                      <div className="mt-2 bg-slate-50 border-l-2 border-slate-200 p-2 rounded-r-lg">
+                        <p className="text-xs italic text-gray-500 font-semibold">"{notif.metadata.moderationNotes}"</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              );
+            })
+          ) : (
+            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-100">
+              <Inbox className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-400 font-bold italic">Your inbox is clear</p>
+            </div>
+          )}
         </div>
-
-        {/* Notifications List */}
-        {notifications.length > 0 ? (
-          <div className="space-y-0 bg-white rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100">
-            {notifications.map((notification: Notification) => (
-              <div
-                key={notification.id}
-                className={`group hover:bg-gray-50 transition-all duration-150 cursor-pointer ${
-                  !notification.isRead ? 'bg-blue-50' : 'bg-white'
-                }`}
-                onClick={() => handleNotificationClick(notification)}
-              >
-                <div className="p-5 flex items-start gap-4 relative">
-                  {/* Unread Indicator Bar */}
-                  {!notification.isRead && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-600"></div>
-                  )}
-
-                  {/* Icon */}
-                  <div className={`flex-shrink-0 w-14 h-14 rounded-full ${getNotificationColor(notification.type, notification.isRead)} flex items-center justify-center shadow-sm`}>
-                    {getNotificationIcon(notification.type)}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div className="flex-1">
-                        <h3 className={`font-bold mb-1 text-base ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`}>
-                          {notification.title}
-                        </h3>
-                        <p className={`text-sm leading-relaxed ${!notification.isRead ? 'text-gray-800 font-medium' : 'text-gray-600'}`}>
-                          {notification.message}
-                        </p>
-                      </div>
-                      {!notification.isRead && (
-                        <div className="flex-shrink-0">
-                          <div className="w-2.5 h-2.5 bg-green-600 rounded-full ring-4 ring-green-100"></div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>{new Date(notification.createdAt).toLocaleString()}</span>
-                        </div>
-                        <Badge variant="secondary" className="text-xs px-2.5 py-0.5 font-semibold bg-gray-100 text-gray-700">
-                          {notification.type.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      {notification.complaintId && (
-                        <span className="text-xs text-green-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                          View Details →
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  {!notification.isRead && (
-                    <div className="flex-shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          markAsReadMutation.mutate(notification.id);
-                        }}
-                        className="p-2.5 text-green-600 hover:bg-green-100 rounded-full transition-colors shadow-sm border border-green-200 hover:border-green-300"
-                        title="Mark as read"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Card className="p-16 text-center border-0 shadow-sm bg-white">
-            <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No Notifications</h3>
-            <p className="text-gray-600 font-medium">
-              You're all caught up! New notifications will appear here.
-            </p>
-          </Card>
-        )}
       </div>
     </div>
   );
