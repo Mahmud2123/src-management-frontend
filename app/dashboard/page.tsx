@@ -169,7 +169,7 @@ const categoryData = data?.byCategory?.map((item: { categoryId: string; _count: 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
-    title={['STUDENT', 'CLASS_REP'].includes(user?.role) ? "My Submissions" : "Total Complaints"}
+    title={['STUDENT', 'CLASS_REP'].includes(user?.role || '') ? "My Submissions" : "Total Complaints"}
     value={data?.total ?? 0}
     icon={FileText}
     color="text-blue-600"
