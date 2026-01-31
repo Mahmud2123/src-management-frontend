@@ -28,8 +28,10 @@ export default function Sidebar() {
   });
 
   //3. Count unread notifications
-  // Adjust 'isRead' to 'read' based on your backend field name
-  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+// Add a fallback to 0 and ensure the filter is working on the correct data structure
+const unreadCount = Array.isArray(notifications) 
+  ? notifications.filter((n: any) => n.isRead === false).length 
+  : 0;
 
   const isAdmin = user.role === 'ADMIN';
   const isSRC = ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role);
@@ -45,13 +47,6 @@ export default function Sidebar() {
     },
  
    // Inside your navigation array:
-{
-  name: 'All Complaints',
-  icon: FileText,
-  path: '/complaints',
-  show: isSRC, 
-},
-
     {
       name: 'All Complaints',
       icon: FileText,
@@ -60,7 +55,7 @@ export default function Sidebar() {
     },
  
     {
-      name: 'My Submissions',
+      name: 'My Complaints',
       icon: UserCircle,
       path: '/complaints?filter=MINE',
       show: isPersonalUser,
@@ -193,31 +188,52 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-        {visibleNav.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.path);
-          
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNavigation(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 group ${
-                active
-                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/30'
-                  : item.highlight
-                  ? 'bg-green-50 text-green-700 hover:bg-green-100 border-2 border-green-200'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <Icon className={`w-5 h-5 ${active ? 'text-white' : item.highlight ? 'text-green-700' : 'text-gray-400 group-hover:text-gray-600'}`} />
-              <span className={`flex-1 font-medium ${active ? 'text-white' : ''}`}>
-                {item.name}
-              </span>
-              {active && <ChevronRight className="w-4 h-4 text-white" />}
-            </button>
-          );
-        })}
-      </nav>
+  {visibleNav.map((item) => {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+    // Explicitly handle the badge value to satisfy TypeScript
+    const badgeValue = item.badge ?? 0;
+
+    return (
+      <button
+        key={item.path}
+        onClick={() => handleNavigation(item.path)}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 group relative ${
+          active
+            ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/30'
+            : item.highlight
+            ? 'bg-green-50 text-green-700 hover:bg-green-100 border-2 border-green-200'
+            : 'text-gray-700 hover:bg-gray-50'
+        }`}
+      >
+        <Icon 
+          className={`w-5 h-5 ${
+            active ? 'text-white' : item.highlight ? 'text-green-700' : 'text-gray-400 group-hover:text-gray-600'
+          }`} 
+        />
+        
+        <span className={`flex-1 font-medium ${active ? 'text-white' : ''}`}>
+          {item.name}
+        </span>
+
+        {/* Professional Badge Logic */}
+        {badgeValue > 0 && (
+          <span 
+            className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full border-2 transition-colors duration-200 ${
+              active 
+                ? 'bg-white text-green-700 border-green-600' 
+                : 'bg-red-500 text-white border-white'
+            }`}
+          >
+            {badgeValue > 9 ? '9+' : badgeValue}
+          </span>
+        )}
+
+        {active && <ChevronRight className="w-4 h-4 text-white animate-in slide-in-from-left-1" />}
+      </button>
+    );
+  })}
+</nav>
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-gray-200 space-y-2">

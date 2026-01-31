@@ -1,21 +1,24 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { fetchCategories,createComplaint } from '@/lib/api';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Button } from '@/components/Button';
-import { Card } from '@/components/Card';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+
+// API & Utilities
+import { fetchCategories, createComplaint, checkDuplicateComplaints } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
+
+// UI Components & Icons
 import {
   FileText, AlertCircle, MapPin, Tag, Lock, Upload, X,
   CheckCircle, ArrowLeft, Sparkles, Shield, Info, Lightbulb
 } from 'lucide-react';
-import { checkDuplicateComplaints } from "@/lib/api";
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 
 const schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -31,38 +34,13 @@ type FormData = z.infer<typeof schema>;
 
 export default function CreateComplaintPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // 1. All States
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  // 2. Inside your component:
-const [title, setTitle] = useState('');
-const [duplicates, setDuplicates] = useState([]);
-const debouncedTitle = useDebounce(title, 500); // Wait 500ms after user stops type
+  const [duplicates, setDuplicates] = useState<any[]>([]); // Added missing state
 
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: fetchCategories,
-  });
-
-  
-  useEffect(() => {
-    const handleFetch = async () => {
-      // Only search if title is long enough to be meaningful
-      if (debouncedTitle && debouncedTitle.length > 4) {
-        try {
-          const data = await checkDuplicateComplaints(debouncedTitle);
-          setDuplicates(data);
-        } catch (error) {
-          console.error("Failed to fetch duplicates", error);
-          setDuplicates([]);
-        }
-      } else {
-        setDuplicates([]);
-      }
-    };
-    
-    handleFetch();
-  }, [debouncedTitle]);
-
+  // 2. Form Hook
   const { register, handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -71,16 +49,54 @@ const debouncedTitle = useDebounce(title, 500); // Wait 500ms after user stops t
     }
   });
 
+  // 3. Watchers & Debounced Values
+  const watchedTitle = watch('title');
+  const watchedPriority = watch('priority');
+  const watchedIsAnonymous = watch('isAnonymous');
+  const debouncedTitle = useDebounce(watchedTitle, 500);
+  
+  const titleLength = watchedTitle?.length || 0;
+  const descriptionLength = watch('description')?.length || 0;
+
+  // 4. Queries
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+  });
+
+  // 5. Effects (Duplicate Check)
+  useEffect(() => {
+    const handleFetch = async () => {
+      if (debouncedTitle && debouncedTitle.length > 4) {
+        try {
+          const data = await checkDuplicateComplaints(debouncedTitle);
+          setDuplicates(data || []);
+        } catch (error) {
+          setDuplicates([]);
+        }
+      } else {
+        setDuplicates([]);
+      }
+    };
+    handleFetch();
+  }, [debouncedTitle]);
+
+  // 6. Mutations
   const createMutation = useMutation({
-    mutationFn: async (data:FormData)=>{
-       const formattedData = {
+    mutationFn: async (data: FormData) => {
+      const formattedData = {
         ...data,
-        tags:data.tags?
-        data.tags.split(',').map(tag => tag.trim()).filter(tag=>tag !== " "):[]
-       };
-       return createComplaint(formattedData)
+        tags: data.tags
+          ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== "")
+          : []
+      };
+      return createComplaint(formattedData);
     },
     onSuccess: () => {
+      // ✅ Refresh queries here so Sidebar updates after submission
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+      
       toast.success('Complaint Submitted!', {
         description: 'Your complaint has been successfully submitted and is being reviewed.',
       });
@@ -94,14 +110,10 @@ const debouncedTitle = useDebounce(title, 500); // Wait 500ms after user stops t
     },
   });
 
+  // 7. Handlers
   const onSubmit = (data: FormData) => {
     createMutation.mutate(data);
   };
-
-  const watchedPriority = watch('priority');
-  const watchedIsAnonymous = watch('isAnonymous');
-  const titleLength = watch('title')?.length || 0;
-  const descriptionLength = watch('description')?.length || 0;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

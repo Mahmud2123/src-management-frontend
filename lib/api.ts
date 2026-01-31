@@ -123,7 +123,8 @@ export const addComment = async (complaintId: string, content: string, isInterna
  */
 export const fetchNotifications = async () => {
   const res = await axiosInstance.get('/notifications');
-  return res.data;
+  // Professional fallback to ensure it's ALWAYS an array
+  return Array.isArray(res.data) ? res.data : (res.data?.notifications || []);
 };
 
 export const markNotificationRead = async (notificationId: string) => {
