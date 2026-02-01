@@ -9,6 +9,7 @@ import SuggestionSkeleton from './SuggestionSkeleton';
 import { useAuth } from '@/providers/auth';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SuggestionFeed() {
   const { user } = useAuth();
@@ -21,9 +22,44 @@ export default function SuggestionFeed() {
 
   const { mutate: handleUpvote } = useMutation({
     mutationFn: toggleSuggestionUpvote,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suggestions'] }),
-    onError: (error: any) => {
-      toast.error(error.customMessage || 'Failed to upvote');
+    
+    // 1. When the user clicks, update the UI immediately
+    onMutate: async (suggestionId: string) => {
+      // Stop any active refetches so they don't overwrite our "fake" update
+      await queryClient.cancelQueries({ queryKey: ['suggestions'] });
+  
+      // Save the old data (to rollback if the server fails)
+      const previousSuggestions = queryClient.getQueryData(['suggestions']);
+  
+      // Manually edit the React Query cache
+      queryClient.setQueryData(['suggestions'], (old: any) => {
+        if (!old) return [];
+        return old.map((s: any) =>
+          s.id === suggestionId
+            ? { 
+                ...s, 
+                upvotesCount: s.hasUpvoted ? s.upvotesCount - 1 : s.upvotesCount + 1,
+                hasUpvoted: !s.hasUpvoted 
+              }
+            : s
+        );
+      });
+  
+      // Return the "backup" so onError can use it
+      return { previousSuggestions };
+    },
+  
+    // 2. If the server says "No" (error), put the old data back
+    onError: (error: any, suggestionId, context) => {
+      if (context?.previousSuggestions) {
+        queryClient.setQueryData(['suggestions'], context.previousSuggestions);
+      }
+      toast.error(error.customMessage || 'Failed to sync upvote');
+    },
+  
+    // 3. Finally, sync with the server's actual truth
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     }
   });
 
@@ -65,18 +101,46 @@ export default function SuggestionFeed() {
         {suggestionsArray.map((suggestion: any) => (
           <div key={suggestion.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
             <div className="flex gap-4">
-              {/* Voting */}
-              <div className="flex flex-col items-center gap-1">
-                <button 
-                  onClick={() => handleUpvote(suggestion.id)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    suggestion.hasUpvoted ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  <ArrowBigUp className="w-6 h-6" fill={suggestion.hasUpvoted ? "currentColor" : "none"} />
-                </button>
-                <span className="font-bold text-lg">{suggestion._count?.upvotes || 0}</span>
-              </div>
+             {/* Voting */}
+<div className="flex flex-col items-center gap-1">
+  <motion.button 
+    whileTap={{ scale: 0.8 }} // Shrinks slightly when pressed
+    whileHover={{ scale: 1.1 }} // Grows slightly on hover
+    onClick={() => handleUpvote(suggestion.id)}
+    className={`p-2 rounded-lg transition-all duration-200 ${
+      suggestion.hasUpvoted 
+        ? 'bg-green-100 text-green-600 shadow-sm' 
+        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+    }`}
+  >
+    <motion.div
+      initial={false}
+      animate={{ 
+        y: suggestion.hasUpvoted ? [0, -4, 0] : 0, // Tiny jump when activated
+        transition: { type: "spring", stiffness: 300 } 
+      }}
+    >
+      <ArrowBigUp 
+        className="w-6 h-6" 
+        fill={suggestion.hasUpvoted ? "currentColor" : "none"} 
+      />
+    </motion.div>
+  </motion.button>
+
+  {/* Number Animation */}
+  <AnimatePresence mode="wait">
+    <motion.span 
+      key={suggestion._count?.upvotes} // Triggers animation whenever number changes
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -5 }}
+      transition={{ duration: 0.15 }}
+      className={`font-bold text-lg ${suggestion.hasUpvoted ? 'text-green-600' : 'text-gray-900'}`}
+    >
+      {suggestion._count?.upvotes || 0}
+    </motion.span>
+  </AnimatePresence>
+</div>
 
               {/* Content */}
               <div className="flex-1">
