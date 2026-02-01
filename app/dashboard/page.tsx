@@ -389,38 +389,61 @@ const categoryData = data?.byCategory?.map((item: { categoryId: string; _count: 
         </Card>
 
         {/* Recent Activity */}
-        <Card className="p-6 border-0 shadow-lg">
-  <div className="flex items-center justify-between mb-6">
+        <Card className="p-6 border-0 shadow-xl bg-white ring-1 ring-gray-100">
+  <div className="flex items-center justify-between mb-8">
     <div>
-      <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
-      <p className="text-sm text-gray-600 mt-1">Latest updates and changes</p>
+      <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">Recent Activity</h3>
+      <p className="text-sm font-medium text-gray-500 mt-1">Latest system updates</p>
     </div>
-    <div className="p-2 bg-purple-100 rounded-lg">
-      <Activity className="w-5 h-5 text-purple-700" />
+    <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-100">
+      <Activity className="w-5 h-5 text-purple-600" strokeWidth={2.5} />
     </div>
   </div>
 
-  <div className="space-y-4">
+  <div className="space-y-2">
     {loadingActivity ? (
       <div className="animate-pulse space-y-4">
-        {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg" />)}
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 bg-gray-50 rounded-xl border border-gray-100" />
+        ))}
       </div>
     ) : activities.length > 0 ? (
       activities.map((activity: any) => (
-        <div key={activity.id} className="flex items-start gap-4 group hover:bg-gray-50 p-3 rounded-lg transition-colors -mx-3 cursor-pointer"
-             onClick={() => activity.complaintId && router.push(`/complaints/${activity.complaintId}`)}>
-          <div className={`w-2 h-2 ${getActivityStyle(activity.type)} rounded-full mt-2`}></div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-            <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{activity.message}</p>
+        <div 
+          key={activity.id} 
+          className="flex items-center gap-4 p-4 rounded-xl border border-transparent hover:border-gray-200 hover:bg-gray-50/80 hover:shadow-sm transition-all duration-200 group cursor-pointer"
+          onClick={() => activity.complaintId && router.push(`/complaints/${activity.complaintId}`)}
+        >
+          {/* Status Indicator with Glow */}
+          <div className="relative flex-shrink-0">
+            <div className={`w-3 h-3 ${getActivityStyle(activity.type)} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]`} />
+            <div className={`absolute inset-0 w-3 h-3 ${getActivityStyle(activity.type)} rounded-full animate-ping opacity-20`} />
           </div>
-          <span className="text-xs text-gray-500 whitespace-nowrap">
-            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
-          </span>
+
+          <div className="flex-1 min-w-0">
+            {/* Title - Bold and Dark for visibility */}
+            <p className="text-[14px] font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
+              {activity.title}
+            </p>
+            {/* Message - Better contrast */}
+            <p className="text-[13px] font-semibold text-gray-500 mt-0.5 line-clamp-1">
+              {activity.message}
+            </p>
+          </div>
+
+          {/* Time - Larger and more defined */}
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+              {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true }).replace('about ', '')}
+            </span>
+          </div>
         </div>
       ))
     ) : (
-      <p className="text-center text-gray-500 py-4 text-sm">No recent activity</p>
+      <div className="flex flex-col items-center justify-center py-10 opacity-60">
+        <Activity className="w-10 h-10 text-gray-300 mb-2" />
+        <p className="text-gray-500 font-medium text-sm">No recent activity found</p>
+      </div>
     )}
   </div>
 </Card>
