@@ -48,17 +48,32 @@ export default function DashboardPage() {
     return <LoadingState message="Loading dashboard statistics..." />;
   }
   //Helper to map types to colors (same logic as your notifications page)
-const getActivityStyle = (type: string) => {
-  const styles: Record<string, string> = {
-    'STATUS_CHANGE': 'bg-orange-500',
-    'NEW_COMMENT': 'bg-purple-500',
-    'NEW_COMPLAINT': 'bg-blue-500',
-    'RESOLVED': 'bg-green-500',
-    'default': 'bg-gray-500'
+  const getActivityStyle = (action: string) => {
+    const styles: Record<string, string> = {
+      // Status & Progression
+      'STATUS_CHANGE': 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]',
+      'RESOLVED': 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]',
+      'REJECTED': 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]',
+      
+      // Engagement
+      'NEW_COMMENT': 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]',
+      'COMMENT_ADDED': 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]',
+      
+      // Creations
+      'NEW_COMPLAINT': 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)]',
+      'COMPLAINT_CREATED': 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)]',
+      
+      // System/Auth
+      'USER_LOGIN': 'bg-slate-400',
+      'PROFILE_UPDATE': 'bg-teal-500',
+      
+      'default': 'bg-gray-400'
+    };
+  
+    // Ensure we match even if the backend sends lowercase
+    const lookup = action?.toUpperCase();
+    return styles[lookup] || styles.default;
   };
-  return styles[type] || styles.default;
-};
-
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen p-6">
@@ -388,8 +403,9 @@ const categoryData = data?.byCategory?.map((item: { categoryId: string; _count: 
           </div>
         </Card>
 
-        {/* Recent Activity */}
-        <Card className="p-6 border-0 shadow-xl bg-white">
+
+{/* Recent Activity Card */}
+<Card className="p-6 border-0 shadow-xl bg-white">
   <div className="flex items-center justify-between mb-8">
     <div>
       <h3 className="text-xl font-extrabold text-gray-900">Recent Activity</h3>
@@ -412,31 +428,36 @@ const categoryData = data?.byCategory?.map((item: { categoryId: string; _count: 
           className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors group cursor-pointer border border-transparent hover:border-gray-100"
           onClick={() => activity.complaintId && router.push(`/complaints/${activity.complaintId}`)}
         >
-          {/* Status Dot */}
+          {/* 1. Status Dot - Uses 'action' from Prisma to get the color */}
           <div className="mt-1.5 flex-shrink-0">
-            <div className={`w-3 h-3 ${getActivityStyle(activity.type)} rounded-full ring-4 ring-white shadow-sm`} />
+            <div className={`w-3 h-3 ${getActivityStyle(activity.action)} rounded-full ring-4 ring-white shadow-sm`} />
           </div>
 
-          {/* Content Area */}
-          <div className="flex-1">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-              <p className="text-[15px] font-bold text-gray-900 leading-tight">
-                {activity.title || "Untitled Activity"}
+          {/* 2. Content Area */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
+              {/* Uses 'action' for the title */}
+              <p className="text-[15px] font-bold text-gray-900 leading-tight capitalize">
+                {activity.action?.replace(/_/g, ' ').toLowerCase() || "System Update"}
               </p>
+              
+              {/* Uses 'createdAt' for the timeline */}
               <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase flex-shrink-0 w-fit">
                 {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
               </span>
             </div>
             
-            {/* Message - Removed line-clamp to ensure it shows */}
+            {/* 3. Uses 'details' for the descriptive message */}
             <p className="text-[13px] font-medium text-gray-700 leading-relaxed break-words">
-              {activity.message}
+              {activity.details || "Action processed successfully."}
             </p>
           </div>
         </div>
       ))
     ) : (
-      <p className="text-center text-gray-500 py-10 text-sm italic">No recent activity</p>
+      <div className="text-center py-10">
+        <p className="text-gray-500 text-sm italic">No recent activity</p>
+      </div>
     )}
   </div>
 </Card>
