@@ -7,15 +7,15 @@ import { useAuth } from '@/providers/auth';
 import { useRouter } from 'next/navigation';
 import LoadingState from '@/components/LoadingState'; 
 import { useQuery } from '@tanstack/react-query';
-import { fetchCategories, fetchUserActivity } from '@/lib/index';
+import { fetchCategories, fetchUserActivity } from '@/lib/api'; 
 import { formatDistanceToNow } from 'date-fns'; 
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Area, AreaChart
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import {
-  FileText, Clock, CheckCircle, XCircle, TrendingUp, TrendingDown,
-  Activity, AlertCircle, Users, Calendar, Target, Award, ArrowUpRight, ArrowDownRight
+  FileText, Clock, CheckCircle, Activity, AlertCircle, 
+  Calendar, Target, Award, ArrowUpRight, ArrowDownRight, TrendingUp
 } from 'lucide-react';
 
 const COLORS = {
@@ -134,7 +134,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 dark:from-gray-900 dark:to-green-950/30 p-6 space-y-6 transition-colors duration-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 dark:from-gray-900 dark:to-green-950/30 p-6 space-y-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -281,11 +281,10 @@ export default function DashboardPage() {
                 </Pie>
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'var(--card-bg, #fff)', 
-                    border: '1px solid var(--border, #e5e7eb)',
+                    backgroundColor: '#fff', 
+                    border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    color: 'var(--foreground, #000)'
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                   }}
                 />
                 <Legend 
@@ -313,27 +312,26 @@ export default function DashboardPage() {
                 data={categoryData} 
                 margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #f3f4f6)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis 
                   dataKey="name" 
-                  tick={{ fill: 'var(--muted-foreground, #6b7280)', fontSize: 10 }}
-                  axisLine={{ stroke: 'var(--border, #e5e7eb)' }}
+                  tick={{ fill: '#6b7280', fontSize: 10 }}
+                  axisLine={{ stroke: '#e5e7eb' }}
                   interval={0}
                   height={60}
                   angle={-15}
                   tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 10)}...` : value}
                 />
                 <YAxis 
-                  tick={{ fill: 'var(--muted-foreground, #6b7280)', fontSize: 12 }}
-                  axisLine={{ stroke: 'var(--border, #e5e7eb)' }}
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={{ stroke: '#e5e7eb' }}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'var(--card-bg, #fff)', 
-                    border: '1px solid var(--border, #e5e7eb)',
+                    backgroundColor: '#fff', 
+                    border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    color: 'var(--foreground, #000)'
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                   }}
                 />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]}>

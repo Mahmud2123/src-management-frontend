@@ -9,7 +9,7 @@ import {
   TrendingUp, CheckCircle, Clock, AlertTriangle, 
   BarChart3, PieChart as PieIcon, LayoutDashboard, RefreshCcw, Lightbulb, BarChart as BarChartIcon
 } from 'lucide-react';
-import { fetchGlobalStats } from '@/lib/index';
+import { fetchGlobalStats } from '@/lib/api';
 import LoadingState from '@/components/LoadingState';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];

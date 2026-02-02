@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fetchNotifications } from '@/lib/index';
+import { fetchNotifications } from '@/lib/api';
 import { 
   Home, FileText, Users, Bell, Settings, 
   LogOut, Shield, Plus, Menu, X, ChevronRight, Activity,

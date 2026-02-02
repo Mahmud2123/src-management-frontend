@@ -7,7 +7,7 @@ import {
   Lightbulb, Lock, EyeOff, Send, CheckCircle, 
   ArrowLeft, Info, Sparkles, Target 
 } from 'lucide-react';
-import { createSuggestion } from '@/lib/index';
+import { createSuggestion } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { triggerSuccessConfetti } from '@/lib/celebrate';
 

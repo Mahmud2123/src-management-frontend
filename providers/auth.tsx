@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
-import { loginAPI } from '@/lib';
+import { loginAPI } from '@/lib/api';
 import type { User } from '@/types';
 
 interface AuthContextType {

@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 // API & Utilities
-import { fetchCategories, createComplaint, checkDuplicateComplaints } from '@/lib/index';
+import { fetchCategories, createComplaint, checkDuplicateComplaints } from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
 
 // UI Components & Icons

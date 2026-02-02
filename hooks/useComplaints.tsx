@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { fetchComplaints } from '@/lib';
+import { fetchComplaints } from '@/lib/api';
 
 interface UseComplaintsParams {
   status?: string;

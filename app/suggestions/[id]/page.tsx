@@ -10,7 +10,7 @@ import {
   MessageSquare, Send, CheckCircle, XCircle, 
   ArrowLeft, User, Clock, Lightbulb 
 } from 'lucide-react';
-import { fetchSuggestionById, addSuggestionComment, verifySuggestion } from '@/lib/index';
+import { fetchSuggestionById, addSuggestionComment, verifySuggestion } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
