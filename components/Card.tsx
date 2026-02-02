@@ -14,3 +14,4 @@ export const Card: FC<HTMLAttributes<HTMLDivElement>> = ({ children, className, 
     {children}
   </div>
 );
+
