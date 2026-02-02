@@ -8,7 +8,7 @@ import { Toaster } from 'sonner';
 import LayoutWrapper from './LayoutWrapper';
 import {ReactQueryProvider} from '@/providers/react-query';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'],preload: false });
 
 export const metadata: Metadata = {
   title: 'SRC Portal | Sa\'adu Zungur University',
