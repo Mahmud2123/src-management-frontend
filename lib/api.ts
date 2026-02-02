@@ -344,3 +344,42 @@ export const checkDuplicateComplaints = async (query: string) => {
   });
   return res.data; 
 };
+
+
+// Add these to your existing api.ts file
+
+/**
+ * PASSWORD RESET FLOW
+ */
+
+// Step 1: Request password reset (sends email with link and code)
+export const forgotPasswordAPI = async (email: string) => {
+  const res = await axiosInstance.post('/auth/forgot-password', { email });
+  return res.data;
+};
+
+// Step 2a: Verify reset token from email link
+export const verifyResetTokenAPI = async (token: string) => {
+  const res = await axiosInstance.get('/auth/verify-reset-token', {
+    params: { token },
+  });
+  return res.data;
+};
+
+// Step 2b: Verify reset code (manual entry)
+export const verifyResetCodeAPI = async (email: string, code: string) => {
+  const res = await axiosInstance.post('/auth/verify-reset-code', {
+    email,
+    code,
+  });
+  return res.data;
+};
+
+// Step 3: Reset password with token
+export const resetPasswordAPI = async (token: string, newPassword: string) => {
+  const res = await axiosInstance.post('/auth/reset-password', {
+    token,
+    newPassword,
+  });
+  return res.data;
+};
