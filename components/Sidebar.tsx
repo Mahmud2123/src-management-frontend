@@ -20,7 +20,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  if (!user) return null;
+  // Debug: Log to see if component renders
+  console.log('Sidebar rendering, user:', user);
 
   // Fetch real notification data
   const { data: notifications = [] } = useQuery({
@@ -35,10 +36,10 @@ export default function Sidebar() {
     ? notifications.filter((n: any) => n.isRead === false).length 
     : 0;
 
-  const isAdmin = user.role === 'ADMIN';
-  const isSRC = ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role);
-  const isPersonalUser = ['STUDENT', 'CLASS_REP'].includes(user.role);
-  const isClassRep = user.role === 'CLASS_REP';
+  const isAdmin = user?.role === 'ADMIN';
+  const isSRC = ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user?.role || '');
+  const isPersonalUser = ['STUDENT', 'CLASS_REP'].includes(user?.role || '');
+  const isClassRep = user?.role === 'CLASS_REP';
 
   const navigation = [
     {
@@ -137,7 +138,7 @@ export default function Sidebar() {
         return currentFilter === pathFilter;
       }
     }
-    return pathname === path || pathname.startsWith(path + '/');
+    return pathname === path || pathname?.startsWith(path + '/');
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -152,7 +153,7 @@ export default function Sidebar() {
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-colors duration-200">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
       {/* Logo/Brand */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
@@ -170,16 +171,16 @@ export default function Sidebar() {
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-            {user.name.charAt(0).toUpperCase()}
+            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 dark:text-white truncate">{user.name}</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{user.email}</p>
+            <p className="font-semibold text-gray-900 dark:text-white truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{user?.email || 'email@example.com'}</p>
           </div>
         </div>
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${getRoleBadgeColor(user.role)}`}>
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${getRoleBadgeColor(user?.role || 'STUDENT')}`}>
           <Shield className="w-3 h-3" />
-          {user.role.replace('_', ' ')}
+          {user?.role?.replace('_', ' ') || 'STUDENT'}
         </div>
       </div>
 
@@ -225,7 +226,7 @@ export default function Sidebar() {
                 </span>
               )}
 
-              {active && <ChevronRight className="w-4 h-4 text-white animate-in slide-in-from-left-1" />}
+              {active && <ChevronRight className="w-4 h-4 text-white" />}
             </button>
           );
         })}
@@ -272,13 +273,18 @@ export default function Sidebar() {
     </div>
   );
 
+  // Don't render anything if no user
+  if (!user) {
+    console.log('Sidebar: No user, returning null');
+    return null;
+  }
 
   return (
     <>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 transition-colors duration-200"
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
       >
         {isMobileOpen ? (
           <X className="w-6 h-6 text-gray-700 dark:text-white" />
@@ -296,7 +302,7 @@ export default function Sidebar() {
       )}
 
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:block w-72 h-screen sticky top-0 z-30">
+      <aside className="hidden lg:flex lg:flex-col w-72 h-screen sticky top-0 z-30">
         <SidebarContent />
       </aside>
 
