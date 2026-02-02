@@ -1,25 +1,44 @@
+// app/layout.tsx
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
-import { ReactQueryProvider } from '../providers/react-query';
-import { AuthProvider } from '../providers/auth';
-import { ToastProvider } from '../providers/sonner';
+import { AuthProvider } from '@/providers/auth';
+import { ThemeProvider } from '@/providers/ThemeProvider';
+import { Toaster } from 'sonner';
 import LayoutWrapper from './LayoutWrapper';
+import {ReactQueryProvider} from '@/providers/react-query';
 
-export const metadata = {
-  title: 'SRC Complaint Portal',
-  description: 'Saadu Zungur University SRC Complaint System',
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: 'SRC Portal | Sa\'adu Zungur University',
+  description: 'Official Student Representative Council Portal for Sa\'adu Zungur University',
+  keywords: ['SZU', 'Student Portal', 'SRC', 'Complaints', 'University'],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body className="bg-gradient-to-br from-gray-50 to-green-50/30">
-        <ReactQueryProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <LayoutWrapper>{children}</LayoutWrapper>
-            </ToastProvider>
-          </AuthProvider>
-        </ReactQueryProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider>
+          <ReactQueryProvider>
+            <AuthProvider>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+              <Toaster 
+                position="top-right"
+                richColors
+                closeButton
+                duration={4000}
+              />
+            </AuthProvider>
+          </ReactQueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

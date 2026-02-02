@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchUserActivity } from '@/lib/api';
+import { fetchUserActivity } from '@/lib/index';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { 

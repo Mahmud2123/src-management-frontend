@@ -7,7 +7,7 @@ import {
   verifyComplaint, 
   rejectComplaint,
   verifySuggestionStatus 
-} from '@/lib/api';
+} from '@/lib/index';
 import { triggerSuccessConfetti } from '@/lib/celebrate';
 import SuggestionSkeleton from '@/app/suggestions/SuggestionSkeleton';
 import { 

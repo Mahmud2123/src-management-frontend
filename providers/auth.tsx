@@ -1,89 +1,196 @@
-// providers/auth.tsx
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
-import { loginAPI } from '../lib/api';
-import { User } from '../types';
+import { loginAPI } from '@/lib';
+import type { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
-  isLoading:boolean;
+  isLoading: boolean;
+  token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+// Storage keys
+const STORAGE_KEYS = {
+  USER: 'src_user',
+  TOKEN: 'src_token',
+} as const;
 
+// Public routes that don't require authentication
+const PUBLIC_ROUTES = ['/', '/auth', '/auth/forgot-password', '/auth/reset-password'];
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Initialize auth state from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('src_user');
-    if (stored) {
-      setUser(JSON.parse(stored));
-    }
-    setIsLoading(false); // 2. Finish loading
+    const initializeAuth = () => {
+      try {
+        const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+        const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
+
+        if (storedUser && storedToken) {
+          try {
+            const parsedUser = JSON.parse(storedUser) as User;
+            
+            // Validate user object structure
+            if (
+              parsedUser &&
+              typeof parsedUser === 'object' &&
+              parsedUser.id &&
+              parsedUser.email &&
+              parsedUser.role
+            ) {
+              setUser(parsedUser);
+              setToken(storedToken);
+            } else {
+              // Invalid user structure, clear storage
+              throw new Error('Invalid user data structure');
+            }
+          } catch (parseError) {
+            console.warn('Failed to parse stored user data:', parseError);
+            localStorage.removeItem(STORAGE_KEYS.USER);
+            localStorage.removeItem(STORAGE_KEYS.TOKEN);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to initialize auth state:', err);
+        localStorage.removeItem(STORAGE_KEYS.USER);
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
- // providers/auth.tsx
+  // Handle route protection after initialization
+  useEffect(() => {
+    if (!isInitialized) return;
 
-const login = async (email: string, password: string) => {
-  try {
-    const res = await loginAPI(email, password);
-    setUser(res.user);
-    localStorage.setItem('src_user', JSON.stringify(res.user));
-    localStorage.setItem('src_token', res.token);
-    toast.success('Welcome back!');
-    router.push('/dashboard');
-  } catch (err: any) {
-    // 1. Extract the data from Axios response
-    const backendData = err.response?.data;
-    
-    // 2. NestJS puts the error message in .message. 
-    // ValidationPipe often returns an array of strings.
-    let errorMessage = 'Authentication failed';
-    
-    if (backendData?.message) {
-      errorMessage = Array.isArray(backendData.message) 
-        ? backendData.message[0] // Show the first validation error
-        : backendData.message;   // Show the string error (e.g. "Invalid credentials")
-    } else if (err.message) {
-      errorMessage = err.message;
+    const isPublicRoute = PUBLIC_ROUTES.some(route => 
+      pathname === route || pathname?.startsWith(route)
+    );
+
+    // Redirect authenticated users away from auth pages
+    if (user && isPublicRoute) {
+      router.replace('/dashboard');
+      return;
     }
 
-    toast.error(errorMessage);
-    throw err; // Re-throw so the UI can also react if needed
-  }
-};
-  const logout = () => {
+    // Redirect unauthenticated users to auth page
+    if (!user && !isPublicRoute) {
+      router.replace('/auth');
+      return;
+    }
+  }, [user, pathname, isInitialized, router]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const res = await loginAPI(email, password);
+
+      if (!res.user || !res.token) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Update state
+      setUser(res.user);
+      setToken(res.token);
+
+      // Persist to localStorage
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(res.user));
+      localStorage.setItem(STORAGE_KEYS.TOKEN, res.token);
+
+      toast.success('Welcome back!', {
+        description: 'Redirecting to your dashboard...',
+      });
+
+      // Use replace to prevent back button issues
+      router.replace('/dashboard');
+    } catch (err: any) {
+      // Enhanced error handling for NestJS/Axios responses
+      let errorMessage = 'Authentication failed. Please try again.';
+      
+      if (err.response?.data) {
+        const { message, error } = err.response.data;
+        
+        // Handle validation errors (array of messages)
+        if (Array.isArray(message)) {
+          errorMessage = message[0];
+        } 
+        // Handle single error messages
+        else if (typeof message === 'string') {
+          errorMessage = message;
+        }
+        // Handle generic error property
+        else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      toast.error('Login Failed', {
+        description: errorMessage,
+      });
+
+      // Re-throw for component-level handling if needed
+      throw new Error(errorMessage);
+    }
+  }, [router]);
+
+  const logout = useCallback(() => {
+    // Clear state
     setUser(null);
-    localStorage.removeItem('src_user');
-    localStorage.removeItem('src_token');
-    router.push('/');
+    setToken(null);
+
+    // Clear storage
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+
+    toast.success('Signed out successfully', {
+      description: 'Come back soon!',
+    });
+
+    // Use replace to prevent back button issues
+    router.replace('/auth');
+  }, [router]);
+
+  const value: AuthContextType = {
+    user,
+    token,
+    login,
+    logout,
+    isAuthenticated: !!user && !!token,
+    isLoading,
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      isAuthenticated: !!user, 
-      isLoading 
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return context;
-};
-
-
+}

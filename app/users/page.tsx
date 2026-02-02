@@ -8,7 +8,7 @@ import { Badge } from '@/components/Badge';
 import LoadingState from '@/components/LoadingState';
 import AccessDenied from '@/components/AccessDenied';
 import { toast } from 'sonner';
-import { bulkImportUsers } from '@/lib/api';
+import { bulkImportUsers } from '@/lib/index';
 // ✅ Removed direct axios import to prevent accidental use
 import {
   Users, Search, Shield, Edit, Trash2, UserPlus, Mail,
@@ -26,7 +26,7 @@ import {
   deleteUser, // Used for deactivation logic
   exportUsers,
   resetUserPassword // Imported only for the reset password logic if not in lib/api
-} from '@/lib/api';
+} from '@/lib';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth';
 

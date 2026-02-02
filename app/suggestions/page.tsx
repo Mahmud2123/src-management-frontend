@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Lightbulb, ArrowBigUp, User, MessageSquare, Plus, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/Button';
-import { fetchSuggestions, toggleSuggestionUpvote, verifySuggestion } from '@/lib/api';
+import { fetchSuggestions, toggleSuggestionUpvote, verifySuggestion } from '@/lib/index';
 import SuggestionSkeleton from './SuggestionSkeleton';
 import { useAuth } from '@/providers/auth';
 import Link from 'next/link';

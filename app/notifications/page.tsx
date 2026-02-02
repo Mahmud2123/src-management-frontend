@@ -7,7 +7,7 @@ import {
   Bell, MessageSquare, ShieldCheck, 
   Lightbulb, AlertTriangle, Inbox
 } from 'lucide-react';
-import { fetchNotifications, markNotificationRead } from '@/lib/api';
+import { fetchNotifications, markNotificationRead } from '@/lib/index';
 import LoadingState from '@/components/LoadingState';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';

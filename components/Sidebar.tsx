@@ -1,37 +1,39 @@
 'use client';
 
-import { useAuth } from '@/providers/auth';
+import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { fetchNotifications } from '@/lib/api';
+import { useAuth } from '@/providers/auth';
+import { useTheme } from '@/providers/ThemeProvider';
+import { fetchNotifications } from '@/lib/index';
 import { 
   Home, FileText, Users, Bell, Settings, 
   LogOut, Shield, Plus, Menu, X, ChevronRight, Activity,
-  UserCircle, TrendingUp, GraduationCap, User, Lightbulb, ShieldCheck
+  UserCircle, TrendingUp, GraduationCap, User, Lightbulb, ShieldCheck,
+  Moon, Sun
 } from 'lucide-react';
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   if (!user) return null;
 
-  // 2. Fetch real notification data
+  // Fetch real notification data
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications'],
     queryFn: fetchNotifications,
-    enabled: !!user, // Only fetch if user is logged in
-    refetchInterval: 30000, // Optional: refresh every 30 seconds
+    enabled: !!user,
+    refetchInterval: 30000,
   });
 
-  //3. Count unread notifications
-// Add a fallback to 0 and ensure the filter is working on the correct data structure
-const unreadCount = Array.isArray(notifications) 
-  ? notifications.filter((n: any) => n.isRead === false).length 
-  : 0;
+  // Count unread notifications
+  const unreadCount = Array.isArray(notifications) 
+    ? notifications.filter((n: any) => n.isRead === false).length 
+    : 0;
 
   const isAdmin = user.role === 'ADMIN';
   const isSRC = ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role);
@@ -45,15 +47,12 @@ const unreadCount = Array.isArray(notifications)
       path: '/dashboard',
       show: true,
     },
- 
-   // Inside your navigation array:
     {
       name: 'All Complaints',
       icon: FileText,
       path: '/complaints?filter=ALL',
       show: isSRC,
     },
- 
     {
       name: 'My Complaints',
       icon: UserCircle,
@@ -90,8 +89,7 @@ const unreadCount = Array.isArray(notifications)
       icon: Bell,
       path: '/notifications',
       show: true,
-
-      badge: unreadCount, // This should come from real notification count
+      badge: unreadCount,
     },
     {
       name: 'Global Statistics',
@@ -128,11 +126,10 @@ const unreadCount = Array.isArray(notifications)
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    setIsMobileOpen(false);
   };
 
   const isActive = (path: string) => {
-    // Special handling for complaints with filters
     if (path.includes('/complaints?filter=')) {
       if (pathname === '/complaints') {
         const currentFilter = new URLSearchParams(window.location.search).get('filter');
@@ -145,39 +142,39 @@ const unreadCount = Array.isArray(notifications)
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'ADMIN': return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'SRC_EXECUTIVE': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'SRC_MEMBER': return 'bg-green-100 text-green-700 border-green-200';
-      case 'CLASS_REP': return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'STUDENT': return 'bg-gray-100 text-gray-700 border-gray-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'ADMIN': return 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+      case 'SRC_EXECUTIVE': return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+      case 'SRC_MEMBER': return 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800';
+      case 'CLASS_REP': return 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800';
+      case 'STUDENT': return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700';
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700';
     }
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-colors duration-200">
       {/* Logo/Brand */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/30">
             <Shield className="w-6 h-6 text-white" strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">SRC Portal</h1>
-            <p className="text-xs text-gray-600">Sa'adu Zungur University</p>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">SRC Portal</h1>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Sa'adu Zungur University</p>
           </div>
         </div>
       </div>
 
       {/* User Profile Summary */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-br from-green-50 to-blue-50">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 truncate">{user.name}</p>
-            <p className="text-xs text-gray-600 truncate">{user.email}</p>
+            <p className="font-semibold text-gray-900 dark:text-white truncate">{user.name}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{user.email}</p>
           </div>
         </div>
         <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${getRoleBadgeColor(user.role)}`}>
@@ -188,65 +185,85 @@ const unreadCount = Array.isArray(notifications)
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-  {visibleNav.map((item) => {
-    const Icon = item.icon;
-    const active = isActive(item.path);
-    // Explicitly handle the badge value to satisfy TypeScript
-    const badgeValue = item.badge ?? 0;
+        {visibleNav.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.path);
+          const badgeValue = item.badge ?? 0;
 
-    return (
-      <button
-        key={item.path}
-        onClick={() => handleNavigation(item.path)}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 group relative ${
-          active
-            ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/30'
-            : item.highlight
-            ? 'bg-green-50 text-green-700 hover:bg-green-100 border-2 border-green-200'
-            : 'text-gray-700 hover:bg-gray-50'
-        }`}
-      >
-        <Icon 
-          className={`w-5 h-5 ${
-            active ? 'text-white' : item.highlight ? 'text-green-700' : 'text-gray-400 group-hover:text-gray-600'
-          }`} 
-        />
-        
-        <span className={`flex-1 font-medium ${active ? 'text-white' : ''}`}>
-          {item.name}
-        </span>
+          return (
+            <button
+              key={item.path}
+              onClick={() => handleNavigation(item.path)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 group relative ${
+                active
+                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/30'
+                  : item.highlight
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 border-2 border-green-200 dark:border-green-800'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              <Icon 
+                className={`w-5 h-5 ${
+                  active ? 'text-white' : item.highlight ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'
+                }`} 
+              />
+              
+              <span className={`flex-1 font-medium ${active ? 'text-white' : ''}`}>
+                {item.name}
+              </span>
 
-        {/* Professional Badge Logic */}
-        {badgeValue > 0 && (
-          <span 
-            className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full border-2 transition-colors duration-200 ${
-              active 
-                ? 'bg-white text-green-700 border-green-600' 
-                : 'bg-red-500 text-white border-white'
-            }`}
-          >
-            {badgeValue > 9 ? '9+' : badgeValue}
-          </span>
-        )}
+              {/* Badge */}
+              {badgeValue > 0 && (
+                <span 
+                  className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full border-2 transition-colors duration-200 ${
+                    active 
+                      ? 'bg-white text-green-700 border-green-600' 
+                      : 'bg-red-500 text-white border-white dark:border-gray-900'
+                  }`}
+                >
+                  {badgeValue > 9 ? '9+' : badgeValue}
+                </span>
+              )}
 
-        {active && <ChevronRight className="w-4 h-4 text-white animate-in slide-in-from-left-1" />}
-      </button>
-    );
-  })}
-</nav>
+              {active && <ChevronRight className="w-4 h-4 text-white animate-in slide-in-from-left-1" />}
+            </button>
+          );
+        })}
+      </nav>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-gray-200 space-y-2">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        {/* Dark Mode Toggle */}
         <button
-          onClick={() => router.push('/settings')}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-all"
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 group"
         >
-          <Settings className="w-5 h-5 text-gray-400" />
+          {theme === 'light' ? (
+            <>
+              <Moon className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" strokeWidth={2.5} />
+              <span className="font-medium">Dark Mode</span>
+            </>
+          ) : (
+            <>
+              <Sun className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-yellow-500" strokeWidth={2.5} />
+              <span className="font-medium">Light Mode</span>
+            </>
+          )}
+        </button>
+
+        {/* Settings */}
+        <button
+          onClick={() => handleNavigation('/settings')}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+        >
+          <Settings className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           <span className="font-medium">Settings</span>
         </button>
+
+        {/* Logout */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
         >
           <LogOut className="w-5 h-5" />
           <span className="font-medium">Logout</span>
@@ -255,24 +272,25 @@ const unreadCount = Array.isArray(notifications)
     </div>
   );
 
+
   return (
     <>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-gray-200"
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 transition-colors duration-200"
       >
         {isMobileOpen ? (
-          <X className="w-6 h-6 text-gray-700" />
+          <X className="w-6 h-6 text-gray-700 dark:text-white" />
         ) : (
-          <Menu className="w-6 h-6 text-gray-700" />
+          <Menu className="w-6 h-6 text-gray-700 dark:text-white" />
         )}
       </button>
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 dark:bg-black/70 z-40"
           onClick={() => setIsMobileOpen(false)}
         />
       )}

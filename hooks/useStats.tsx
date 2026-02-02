@@ -1,6 +1,6 @@
 // hooks/useStats.tsx
 import { useQuery } from '@tanstack/react-query';
-import { fetchComplaintStats } from '../lib/api';
+import { fetchComplaintStats } from '../lib';
 import { ComplaintStats } from '@/types';
 
 export const useStats = () => {

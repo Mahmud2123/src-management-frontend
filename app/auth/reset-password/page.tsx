@@ -6,7 +6,7 @@ import {
   verifyResetTokenAPI, 
   verifyResetCodeAPI, 
   resetPasswordAPI 
-} from '@/lib/api';
+} from '@/lib/index';
 import { toast } from 'sonner';
 import {
   Lock, Eye, EyeOff, Check, X, ArrowLeft, Shield,

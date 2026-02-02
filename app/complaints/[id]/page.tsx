@@ -8,7 +8,7 @@ import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
-import { fetchComplaintById, addComment, updateComplaint, uploadFile } from '@/lib/api';
+import { fetchComplaintById, addComment, updateComplaint, uploadFile } from '@/lib/index';
 import {
   ArrowLeft, MapPin, Calendar, User, Eye, AlertCircle, Send,
   Paperclip, Download, MessageSquare, Lock, CheckCircle, Clock,

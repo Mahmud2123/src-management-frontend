@@ -7,7 +7,7 @@ import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { useAuth } from '@/providers/auth';
 import { toast } from 'sonner';
-import { addStudentByClassRep, fetchUserActivity,fetchMyStudents, fetchFaculties, fetchDepartments } from '@/lib/api';
+import { addStudentByClassRep, fetchUserActivity,fetchMyStudents, fetchFaculties, fetchDepartments } from '@/lib/index';
 import axios from 'axios';
 
 
