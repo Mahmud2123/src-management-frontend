@@ -79,26 +79,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Handle route protection after initialization
-  useEffect(() => {
-    if (!isInitialized) return;
+// Handle route protection after initialization
+useEffect(() => {
+  if (!isInitialized) return;
 
-    const isPublicRoute = PUBLIC_ROUTES.some(route => 
-      pathname === route || pathname?.startsWith(route)
-    );
+  // FIX: Differentiate between the landing page and protected pages
+  const isLandingPage = pathname === '/';
+  const isAuthRoute = pathname?.startsWith('/auth');
+  const isPublicRoute = isLandingPage || isAuthRoute;
 
-    // Redirect authenticated users away from auth pages
-    if (user && isPublicRoute) {
-      router.replace('/dashboard');
-      return;
-    }
+  // 1. If authenticated and trying to access login/landing page -> Dashboard
+  if (user && isPublicRoute) {
+    console.log('Auth Guard: Redirecting logged-in user to dashboard');
+    router.replace('/dashboard');
+    return;
+  }
 
-    // Redirect unauthenticated users to auth page
-    if (!user && !isPublicRoute) {
-      router.replace('/');
-      return;
-    }
-  }, [user, pathname, isInitialized, router]);
+  // 2. If NOT authenticated and trying to access a protected page -> Landing
+  if (!user && !isPublicRoute) {
+    console.log('Auth Guard: Redirecting guest to landing page');
+    router.replace('/');
+    return;
+  }
+}, [user, pathname, isInitialized, router]);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
