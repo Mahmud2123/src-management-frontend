@@ -7,18 +7,23 @@ import { Shield } from 'lucide-react';
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
 
-  // Define public routes
-  const PUBLIC_ROUTES = ['/', '/auth', '/auth/forgot-password', '/auth/reset-password'];
-  const isPublicRoute = PUBLIC_ROUTES.some(route => 
-    pathname === route || pathname?.startsWith(route)
-  );
+  /**
+   * FIX: We must distinguish between an EXACT match for the landing page
+   * and a PREFIX match for auth routes.
+   */
+  const isLandingPage = pathname === '/';
+  const isAuthRoute = pathname.startsWith('/auth');
+  const isPublicRoute = isLandingPage || isAuthRoute;
 
-  // Debug logging
-  console.log('LayoutWrapper:', { user: !!user, isLoading, pathname, isPublicRoute });
+  // Debug logging - Monitor this in your browser console
+  console.log('Layout Debug:', { 
+    path: pathname, 
+    isPublic: isPublicRoute, 
+    hasUser: !!user 
+  });
 
-  // Show loading screen during initial auth check
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-green-950">
@@ -28,29 +33,23 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
           </div>
           <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white text-lg font-semibold">Loading SRC Portal...</p>
-          <p className="text-green-200 text-sm mt-2">Please wait while we authenticate you</p>
         </div>
       </div>
     );
   }
 
-  // Render public routes without sidebar
+  // If it's a public page OR the user isn't logged in, skip the layout
   if (isPublicRoute || !user) {
-    console.log('LayoutWrapper: Rendering public route');
     return <>{children}</>;
   }
 
-  // Render protected routes with sidebar
-  console.log('LayoutWrapper: Rendering with sidebar');
   return (
-    /* Force the container to take up the full viewport */
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar - Fix its width so flexbox doesn't squash it to 0 */}
-      <aside className="h-full w-72 flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
-        <Sidebar />
-      </aside>
-  
-      {/* Main Content - Ensure it grows to fill remaining space */}
+      {/* Ensure your Sidebar component doesn't have 
+          its own 'hidden' classes that might override this 
+      */}
+      <Sidebar />
+
       <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative bg-white dark:bg-gray-950">
         {children}
       </main>
