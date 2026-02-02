@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -19,6 +19,7 @@ export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Debug: Log to see if component renders
   console.log('Sidebar rendering, user:', user);
@@ -31,6 +32,14 @@ export default function Sidebar() {
     refetchInterval: 30000,
   });
 
+
+  useEffect(() => {
+    setMounted(true); // Add this
+  }, []);
+
+  if (!mounted || !user) { // Change this
+    return null;
+  }
   // Count unread notifications
   const unreadCount = Array.isArray(notifications) 
     ? notifications.filter((n: any) => n.isRead === false).length 
