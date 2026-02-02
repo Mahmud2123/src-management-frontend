@@ -10,7 +10,7 @@ import {
 import { toast } from 'sonner';
 import {
   Lock, Eye, EyeOff, Check, X, ArrowLeft, Shield,
-  KeyRound, CheckCircle, AlertTriangle
+  KeyRound, CheckCircle
 } from 'lucide-react';
 
 export default function ResetPasswordPage() {
