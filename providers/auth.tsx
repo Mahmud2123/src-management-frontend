@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
 } as const;
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/', '/auth', '/auth/forgot-password', '/auth/reset-password'];
+const PUBLIC_ROUTES = ['/', '/auth/forgot-password', '/auth/reset-password'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Redirect unauthenticated users to auth page
     if (!user && !isPublicRoute) {
-      router.replace('/auth');
+      router.replace('/');
       return;
     }
   }, [user, pathname, isInitialized, router]);
@@ -168,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Use replace to prevent back button issues
-    router.replace('/auth');
+    router.replace('/');
   }, [router]);
 
   const value: AuthContextType = {
