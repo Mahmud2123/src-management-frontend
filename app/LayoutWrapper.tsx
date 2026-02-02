@@ -43,14 +43,15 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // Render protected routes with sidebar
   console.log('LayoutWrapper: Rendering with sidebar');
   return (
-    <div className="flex h-screen w-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
-      {/* Sidebar Container */}
-      <div className="flex-shrink-0">
+    /* Force the container to take up the full viewport */
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+      {/* Sidebar - Fix its width so flexbox doesn't squash it to 0 */}
+      <aside className="h-full w-72 flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
         <Sidebar />
-      </div>
-      
-      {/* Content Area */}
-      <main className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden relative">
+      </aside>
+  
+      {/* Main Content - Ensure it grows to fill remaining space */}
+      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative bg-white dark:bg-gray-950">
         {children}
       </main>
     </div>

@@ -311,9 +311,9 @@ export default function Sidebar() {
       )}
 
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex lg:flex-col w-72 h-screen sticky top-0 z-30">
-        <SidebarContent />
-      </aside>
+      <aside className="hidden md:flex md:flex-col w-72 h-full">
+  <SidebarContent />
+</aside>
 
       {/* Sidebar - Mobile */}
       <aside

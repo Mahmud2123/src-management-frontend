@@ -134,7 +134,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 dark:from-gray-900 dark:to-green-950/30 p-6 space-y-6">
+    <div className="w-full p-6 space-y-6 bg-gradient-to-br from-gray-50 to-green-50/30 dark:from-gray-900 dark:to-green-950/30 p-6 space-y-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
