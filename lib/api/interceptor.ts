@@ -36,7 +36,8 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('src_user');
         localStorage.removeItem('src_token');
         // Redirect to landing page, not /auth
-        if (!window.location.pathname === '/') {
+        // ✅ FIXED: Check if not already on landing page
+        if (window.location.pathname !== '/') {
           window.location.href = '/';
         }
       }
