@@ -9,20 +9,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const { user, isLoading } = useAuth();
   const pathname = usePathname() || '';
 
-  /**
-   * FIX: We must distinguish between an EXACT match for the landing page
-   * and a PREFIX match for auth routes.
-   */
   const isLandingPage = pathname === '/';
   const isAuthRoute = pathname.startsWith('/auth');
   const isPublicRoute = isLandingPage || isAuthRoute;
-
-  // Debug logging - Monitor this in your browser console
-  console.log('Layout Debug:', { 
-    path: pathname, 
-    isPublic: isPublicRoute, 
-    hasUser: !!user 
-  });
 
   if (isLoading) {
     return (
@@ -38,19 +27,14 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     );
   }
 
-  // If it's a public page OR the user isn't logged in, skip the layout
   if (isPublicRoute || !user) {
     return <>{children}</>;
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
-      {/* Ensure your Sidebar component doesn't have 
-          its own 'hidden' classes that might override this 
-      */}
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
       <Sidebar />
-
-      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative bg-white dark:bg-gray-950">
+      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden relative bg-white">
         {children}
       </main>
     </div>

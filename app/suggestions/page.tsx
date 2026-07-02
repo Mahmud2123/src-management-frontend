@@ -83,13 +83,13 @@ export default function SuggestionFeed() {
   const canModerate = ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user?.role || '');
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-950 min-h-screen">
+    <div className="max-w-4xl mx-auto p-6 bg-white min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Lightbulb className="text-yellow-500" /> Suggestion Box
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Community-driven ideas for SZU.</p>
+          <p className="text-gray-600 text-sm">Community-driven ideas for SZU.</p>
         </div>
         
         {user?.role === 'STUDENT' && (
@@ -101,7 +101,7 @@ export default function SuggestionFeed() {
 
       <div className="space-y-4">
         {suggestionsArray.map((suggestion: any) => (
-          <div key={suggestion.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+          <div key={suggestion.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
             <div className="flex gap-4">
               {/* Voting */}
               <div className="flex flex-col items-center gap-1">
@@ -111,8 +111,8 @@ export default function SuggestionFeed() {
                   onClick={() => handleUpvote(suggestion.id)}
                   className={`p-2 rounded-lg transition-all duration-200 ${
                     suggestion.hasUpvoted 
-                      ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 shadow-sm' 
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      ? 'bg-green-100 text-green-600 shadow-sm' 
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   }`}
                 >
                   <motion.div
@@ -136,8 +136,8 @@ export default function SuggestionFeed() {
                     transition={{ duration: 0.15 }}
                     className={`font-bold text-lg ${
                       suggestion.hasUpvoted 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-gray-900 dark:text-white'
+                        ? 'text-green-600' 
+                        : 'text-gray-900'
                     }`}
                   >
                     {suggestion._count?.upvotes || 0}
@@ -150,23 +150,23 @@ export default function SuggestionFeed() {
                 <div className="flex items-center justify-between mb-2">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                     suggestion.status === 'APPROVED' 
-                      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 
+                      ? 'bg-green-100 text-green-700' : 
                     suggestion.status === 'REJECTED' 
-                      ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' 
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      ? 'bg-red-100 text-red-700' 
+                      : 'bg-gray-100 text-gray-600'
                   }`}>
                     {suggestion.status}
                   </span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                  <span className="text-[10px] text-gray-400">
                     {formatDistanceToNow(new Date(suggestion.createdAt))} ago
                   </span>
                 </div>
 
                 <Link href={`/suggestions/${suggestion.id}`} className="group">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-green-600 transition-colors">
                     {suggestion.title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
                     {suggestion.description}
                   </p>
                 </Link>
@@ -176,29 +176,29 @@ export default function SuggestionFeed() {
                   <div className="flex gap-2 mb-4">
                     <Button 
                       onClick={() => handleVerify({ id: suggestion.id, status: 'APPROVED' })}
-                      className="flex-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/50"
+                      className="flex-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
                     >
                       <CheckCircle className="w-4 h-4 mr-1" /> Approve
                     </Button>
                     <Button 
                       variant="secondary"
                       onClick={() => handleVerify({ id: suggestion.id, status: 'REJECTED' })}
-                      className="flex-1 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50"
+                      className="flex-1 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
                     >
                       <XCircle className="w-4 h-4 mr-1" /> Reject
                     </Button>
                   </div>
                 )}
                 
-                <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4 mt-2">
-                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <User className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <User className="w-3 h-3 text-gray-400" />
                     {suggestion.isAnonymous ? 'Anonymous' : suggestion.author?.name}
                   </div>
                   
                   <Link 
                     href={`/suggestions/${suggestion.id}`} 
-                    className="flex items-center gap-1.5 text-xs font-bold text-green-600 dark:text-green-400 hover:underline"
+                    className="flex items-center gap-1.5 text-xs font-bold text-green-600 hover:underline"
                   >
                     <MessageSquare className="w-4 h-4" /> 
                     Discussion ({suggestion._count?.comments || 0})

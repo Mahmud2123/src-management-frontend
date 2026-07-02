@@ -43,12 +43,10 @@ export default function NotificationsPage() {
   };
 
   const handleNotificationClick = (notif: any) => {
-    // Mark as read
     if (!notif.isRead) {
       markReadMutation.mutate(notif.id);
     }
 
-    // Smart routing based on notification type and referenceId
     const refId = notif.referenceId;
     const type = notif.type;
 
@@ -59,13 +57,11 @@ export default function NotificationsPage() {
 
     let targetPath = '';
 
-    // Route to appropriate page based on notification type
     if (type === 'NEW_SUGGESTION' || type === 'SUGGESTION_STATUS_CHANGE') {
       targetPath = `/suggestions/${refId}`;
     } else if (type === 'NEW_COMPLAINT' || type === 'STATUS_CHANGE' || type === 'NEW_COMMENT') {
       targetPath = `/complaints/${refId}`;
     } else {
-      // Fallback for unknown types
       targetPath = '/dashboard';
     }
 

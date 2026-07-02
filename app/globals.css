@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  /* Mapping your custom CSS variables to Tailwind utility names */
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-primary: hsl(var(--primary));
@@ -14,7 +13,7 @@
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border)); /* Fixes 'border-border' error */
+  --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   --radius-lg: var(--radius);
@@ -43,33 +42,10 @@
     --ring: 142.1 76.2% 36.3%;
     --radius: 0.5rem;
   }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142.1 70.6% 45.3%;
-    --primary-foreground: 144.9 80.4% 10%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142.1 70.6% 45.3%;
-  }
 }
 
 @layer base {
   * {
-    /* Directly use CSS variables here to avoid @apply limitations in v4 base layers */
     border-color: hsl(var(--border));
   }
   
@@ -79,38 +55,7 @@
   }
 }
 
-/* Smooth transitions for theme switching */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 200ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Disable transitions on theme change to prevent flash */
-.theme-transitioning * {
-  transition: none !important;
-}
-
-/* Custom scrollbar for dark mode */
-.dark ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 5px;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-/* Light mode scrollbar */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -129,15 +74,15 @@
   background: #9ca3af;
 }
 
-/* Ensure charts and components work in dark mode */
-.dark .recharts-surface {
+/* Ensure charts work properly */
+.recharts-surface {
   background-color: transparent;
 }
 
-.dark .recharts-cartesian-axis-tick-value {
-  fill: #9ca3af;
+.recharts-cartesian-axis-tick-value {
+  fill: #6b7280;
 }
 
-.dark .recharts-legend-item-text {
-  color: #e5e7eb !important;
+.recharts-legend-item-text {
+  color: #1f2937 !important;
 }

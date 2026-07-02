@@ -16,42 +16,61 @@ export default function AuditLogsPage() {
     queryFn: fetchUserActivity
   });
 
-  // Enhanced Styling Logic for "Critical" vs "Routine"
+  // Enhanced Styling Logic with better visibility
   const getActionConfig = (action: string) => {
-    if (action.includes('REJECT') || action.includes('DELETE')) {
+    if (action.includes('REJECT') || action.includes('DELETE') || action.includes('DEACTIVATE')) {
       return { 
-        style: 'bg-red-50 text-red-700 border-red-100', 
+        style: 'bg-red-100 text-red-800 border-red-200', 
         icon: <XCircle className="w-3 h-3" />,
         priority: 'CRITICAL'
       };
     }
-    if (action.includes('VERIFY') || action.includes('RESOLVE')) {
+    if (action.includes('VERIFY') || action.includes('RESOLVE') || action.includes('APPROVE')) {
       return { 
-        style: 'bg-emerald-50 text-emerald-700 border-emerald-100', 
+        style: 'bg-emerald-100 text-emerald-800 border-emerald-200', 
         icon: <CheckCircle2 className="w-3 h-3" />,
         priority: 'IMPORTANT'
       };
     }
+    if (action.includes('CREATE') || action.includes('UPDATE')) {
+      return { 
+        style: 'bg-blue-100 text-blue-800 border-blue-200', 
+        icon: <Info className="w-3 h-3" />,
+        priority: 'MODERATE'
+      };
+    }
+    if (action.includes('LOGIN') || action.includes('LOGOUT')) {
+      return { 
+        style: 'bg-slate-100 text-slate-700 border-slate-200', 
+        icon: <User className="w-3 h-3" />,
+        priority: 'ROUTINE'
+      };
+    }
     return { 
-      style: 'bg-slate-50 text-slate-600 border-slate-100', 
+      style: 'bg-gray-100 text-gray-700 border-gray-200', 
       icon: <Info className="w-3 h-3" />,
       priority: 'ROUTINE'
     };
   };
 
+  // Format action name for display
+  const formatAction = (action: string) => {
+    return action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   if (isLoading) return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      <p className="text-gray-500 font-medium">Reconstructing system timeline...</p>
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-white">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <p className="text-gray-500 font-medium">Loading audit logs...</p>
     </div>
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-[#fcfcfc] min-h-screen">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-white min-h-screen">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Shield className="w-4 h-4 text-indigo-600" />
+            <Shield className="w-4 h-4 text-green-600" />
             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Security & Oversight</span>
           </div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">System Audit</h1>
@@ -60,7 +79,7 @@ export default function AuditLogsPage() {
         <div className="flex items-center gap-4">
             <div className="px-6 py-3 bg-white shadow-sm border border-gray-100 rounded-2xl">
                 <p className="text-[10px] uppercase font-black text-gray-400">Total Events</p>
-                <p className="text-2xl font-black text-indigo-600">{logs?.length || 0}</p>
+                <p className="text-2xl font-black text-green-600">{logs?.length || 0}</p>
             </div>
         </div>
       </div>
@@ -84,7 +103,7 @@ export default function AuditLogsPage() {
                   <tr key={log.id} className="hover:bg-gray-50/40 transition-colors group">
                     <td className="p-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold border border-indigo-100">
+                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600 font-bold border border-green-100">
                           {log.user?.name?.charAt(0) || 'S'}
                         </div>
                         <div>
@@ -96,15 +115,15 @@ export default function AuditLogsPage() {
                       </div>
                     </td>
                     <td className="p-6">
-                      <Badge className={`${config.style} flex items-center gap-1.5 py-1 px-3 rounded-lg border text-[10px] font-bold`}>
+                      <Badge className={`${config.style} flex items-center gap-1.5 py-1.5 px-3 rounded-lg border text-[11px] font-bold whitespace-nowrap`}>
                         {config.icon}
-                        {log.action.replace(/_/g, ' ')}
+                        <span className="text-gray-900">{formatAction(log.action)}</span>
                       </Badge>
                     </td>
                     <td className="p-6">
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-gray-700 uppercase tracking-tight">{log.entityType}</span>
-                        <span className="text-[10px] text-indigo-400 font-mono">
+                        <span className="text-[10px] text-green-500 font-mono">
                           #{log.entityId ? log.entityId.slice(-6) : 'SYSTEM'}
                         </span>
                       </div>
@@ -112,16 +131,16 @@ export default function AuditLogsPage() {
                     <td className="p-6">
                       <div className="max-w-xs">
                         {log.details ? (
-                          <p className="text-xs text-gray-600 leading-relaxed italic border-l-2 border-gray-100 pl-3">
-                            "{log.details}"
+                          <p className="text-xs text-gray-700 leading-relaxed border-l-2 border-green-200 pl-3 font-medium">
+                            {log.details}
                           </p>
                         ) : (
-                          <span className="text-gray-300 text-[10px]">No additional notes</span>
+                          <span className="text-gray-400 text-[10px]">No additional notes</span>
                         )}
                       </div>
                     </td>
                     <td className="p-6">
-                      <div className="flex items-center gap-2 text-gray-400 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-gray-500 whitespace-nowrap">
                         <Clock className="w-3 h-3" />
                         <span className="text-[11px] font-bold uppercase tracking-tighter">
                             {format(new Date(log.createdAt), 'MMM dd • HH:mm')}

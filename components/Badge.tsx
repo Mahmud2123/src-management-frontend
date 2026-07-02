@@ -10,10 +10,10 @@ export const Badge: FC<BadgeProps> = ({ children, variant = 'default', className
   <div
     {...props}
     className={clsx(
-      'px-2 py-1 rounded-full text-sm font-semibold transition-colors duration-300',
+      'px-2 py-1 rounded-full text-sm font-semibold',
       variant === 'default' 
-        ? 'bg-green-500 dark:bg-green-600 text-white' 
-        : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+        ? 'bg-green-500 text-white' 
+        : 'bg-gray-200 text-gray-700',
       className
     )}
   >

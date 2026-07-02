@@ -50,31 +50,23 @@ export default function ComplaintDetailPage() {
     },
   });
 
- 
-const updateStatusMutation = useMutation({
-  mutationFn: (status: string) => updateComplaint(complaintId, { status }),
-  onSuccess: (updatedData) => {
-    // 1. Show success feedback
-    toast.success(`Status updated to ${updatedData.status.replace('_', ' ')}`);
-    
-    // 2. Stop editing mode immediately
-    setEditingStatus(false);
-    
-    // 3. FORCE REFRESH DATA: Invalidate both the list and this specific complaint
-    queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
-    queryClient.invalidateQueries({ queryKey: ['complaints'] });
-    
-    // 4. Update the local selected status just in case
-    setSelectedStatus(updatedData.status);
-  },
-  onError: (error: any) => {
-    // Better error parsing
-    const message = error.response?.data?.message || error.customMessage || "Permission Denied";
-    toast.error('Update Failed', {
-      description: Array.isArray(message) ? message.join(', ') : message,
-    });
-  },
-});
+  const updateStatusMutation = useMutation({
+    mutationFn: (status: string) => updateComplaint(complaintId, { status }),
+    onSuccess: (updatedData) => {
+      toast.success(`Status updated to ${updatedData.status.replace('_', ' ')}`);
+      setEditingStatus(false);
+      queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
+      queryClient.invalidateQueries({ queryKey: ['complaints'] });
+      setSelectedStatus(updatedData.status);
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || error.customMessage || "Permission Denied";
+      toast.error('Update Failed', {
+        description: Array.isArray(message) ? message.join(', ') : message,
+      });
+    },
+  });
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -134,17 +126,17 @@ const updateStatusMutation = useMutation({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'LOW': return 'bg-gray-100 text-gray-700';
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-700';
-      case 'HIGH': return 'bg-orange-100 text-orange-700';
-      case 'URGENT': return 'bg-red-100 text-red-700';
+      case 'LOW': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'MEDIUM': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'HIGH': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'URGENT': return 'bg-red-100 text-red-700 border-red-200';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto"></div>
           <p className="text-gray-600 font-medium">Loading complaint...</p>
@@ -155,35 +147,35 @@ const updateStatusMutation = useMutation({
 
   if (!complaint) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-6">
+      <div className="flex items-center justify-center min-h-screen p-6 bg-white">
         <Card className="p-12 max-w-md text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-gray-900 mb-2">Complaint Not Found</h3>
           <p className="text-gray-600 mb-6">The complaint you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => router.back()}>Go Back</Button>
+          <Button onClick={() => router.back()} className="bg-green-600 text-white hover:bg-green-700">Go Back</Button>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="secondary" onClick={() => router.back()} className="flex items-center gap-2">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <Button variant="secondary" onClick={() => router.back()} className="flex items-center gap-2 shrink-0">
             <ArrowLeft className="w-4 h-4" />
             Back
           </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">{complaint.title}</h1>
-              <Badge className={`${getStatusColor(complaint.status)} flex items-center gap-1.5 px-3 py-1.5 border text-sm`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 truncate">{complaint.title}</h1>
+              <Badge className={`${getStatusColor(complaint.status)} flex items-center gap-1.5 px-3 py-1.5 border text-sm shrink-0`}>
                 {getStatusIcon(complaint.status)}
                 {complaint.status.replace('_', ' ')}
               </Badge>
             </div>
-            <p className="text-gray-600">Complaint #{complaint.id}</p>
+            <p className="text-sm text-gray-500">Complaint #{complaint.id}</p>
           </div>
         </div>
 
@@ -191,14 +183,14 @@ const updateStatusMutation = useMutation({
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Description Card */}
-            <Card className="p-8 border-0 shadow-lg">
+            <Card className="p-4 sm:p-6 md:p-8 border-0 shadow-lg">
               <div className="flex items-center gap-3 mb-6">
-                <div className={`p-3 ${getPriorityColor(complaint.priority)} rounded-xl`}>
-                  <AlertCircle className="w-6 h-6" />
+                <div className={`p-3 ${getPriorityColor(complaint.priority)} rounded-xl shrink-0`}>
+                  <AlertCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Complaint Details</h2>
-                  <p className="text-sm text-gray-600">Priority: {complaint.priority}</p>
+                  <h2 className="text-lg md:text-xl font-bold text-gray-900">Complaint Details</h2>
+                  <p className="text-sm text-gray-600">Priority: <span className="font-semibold">{complaint.priority}</span></p>
                 </div>
               </div>
 
@@ -219,21 +211,21 @@ const updateStatusMutation = useMutation({
 
             {/* Attachments */}
             {complaint.attachments && complaint.attachments.length > 0 && (
-              <Card className="p-8 border-0 shadow-lg">
+              <Card className="p-4 sm:p-6 md:p-8 border-0 shadow-lg">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <Paperclip className="w-5 h-5 text-green-600" />
                     Attachments ({complaint.attachments.length})
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {complaint.attachments.map((attachment: any) => (
                     <div key={attachment.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
-                      <div className="p-3 bg-green-100 rounded-lg">
+                      <div className="p-3 bg-green-100 rounded-lg shrink-0">
                         {attachment.type?.includes('image') ? (
-                          <ImageIcon className="w-6 h-6 text-green-700" />
+                          <ImageIcon className="w-5 h-5 text-green-700" />
                         ) : (
-                          <FileText className="w-6 h-6 text-green-700" />
+                          <FileText className="w-5 h-5 text-green-700" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -243,9 +235,9 @@ const updateStatusMutation = useMutation({
                       <a
                         href={attachment.url}
                         download
-                        className="p-2 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors"
+                        className="p-2 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0"
                       >
-                        <Download className="w-5 h-5 text-gray-600 group-hover:text-green-600" />
+                        <Download className="w-5 h-5 text-gray-600 hover:text-green-600" />
                       </a>
                     </div>
                   ))}
@@ -253,30 +245,30 @@ const updateStatusMutation = useMutation({
               </Card>
             )}
 
-            {/* Comments Thread */}
-            <Card className="p-8 border-0 shadow-lg">
+            {/* Comments Thread - Responsive */}
+            <Card className="p-4 sm:p-6 md:p-8 border-0 shadow-lg">
               <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-green-600" />
                 Comments ({complaint.comments?.length || 0})
               </h3>
 
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-6 max-h-[600px] overflow-y-auto">
                 {complaint.comments && complaint.comments.length > 0 ? (
                   complaint.comments.map((comment: any) => (
                     <div
                       key={comment.id}
-                      className={`p-5 rounded-xl ${
+                      className={`p-4 rounded-xl ${
                         comment.isInternal
                           ? 'bg-yellow-50 border-2 border-yellow-200'
                           : 'bg-gray-50 border-2 border-gray-100'
                       }`}
                     >
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white font-bold shrink-0">
                           {comment.author?.name?.charAt(0).toUpperCase() || 'U'}
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span className="font-semibold text-gray-900">{comment.author?.name || 'Unknown'}</span>
                             <Badge variant="secondary" className="text-xs px-2 py-0.5">
                               {comment.author?.role?.replace('_', ' ') || 'User'}
@@ -291,7 +283,7 @@ const updateStatusMutation = useMutation({
                               {new Date(comment.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <p className="text-gray-700 leading-relaxed">{comment.content}</p>
+                          <p className="text-gray-700 leading-relaxed break-words">{comment.content}</p>
                         </div>
                       </div>
                     </div>
@@ -301,7 +293,7 @@ const updateStatusMutation = useMutation({
                 )}
               </div>
 
-              {/* Add Comment Form */}
+              {/* Add Comment Form - Responsive */}
               <div className="space-y-4 pt-6 border-t border-gray-200">
                 <textarea
                   value={newComment}
@@ -312,14 +304,16 @@ const updateStatusMutation = useMutation({
                 />
 
                 {canManage && (
-                  <label className="flex items-center gap-3 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl cursor-pointer hover:bg-yellow-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={isInternal}
-                      onChange={(e) => setIsInternal(e.target.checked)}
-                      className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
-                    />
-                    <Lock className="w-5 h-5 text-yellow-700" />
+                  <label className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl cursor-pointer hover:bg-yellow-100 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isInternal}
+                        onChange={(e) => setIsInternal(e.target.checked)}
+                        className="w-5 h-5 text-green-600 rounded focus:ring-green-500 shrink-0"
+                      />
+                      <Lock className="w-5 h-5 text-yellow-700 shrink-0" />
+                    </div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">Internal Comment</p>
                       <p className="text-sm text-gray-600">Only visible to SRC members and administrators</p>
@@ -330,7 +324,7 @@ const updateStatusMutation = useMutation({
                 <Button
                   onClick={handleAddComment}
                   disabled={addCommentMutation.isPending || !newComment.trim()}
-                  className="w-full flex items-center justify-center gap-2"
+                  className="w-full flex items-center justify-center gap-2 bg-green-600 text-white hover:bg-green-700"
                 >
                   <Send className="w-4 h-4" />
                   {addCommentMutation.isPending ? 'Posting...' : 'Post Comment'}
@@ -339,19 +333,19 @@ const updateStatusMutation = useMutation({
             </Card>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - Responsive */}
           <div className="space-y-6">
             {/* Details Card */}
-            <Card className="p-6 border-0 shadow-lg sticky top-6">
+            <Card className="p-4 sm:p-6 border-0 shadow-lg sticky top-6">
               <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-green-600" />
+                <AlertCircle className="w-5 h-5 text-green-600 shrink-0" />
                 Complaint Information
               </h3>
 
               <div className="space-y-4">
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Category</p>
-                  <Badge variant="secondary" className="text-sm px-3 py-1.5">
+                  <Badge variant="secondary" className="text-sm px-3 py-1.5 bg-indigo-100 text-indigo-700">
                     {complaint.category?.name || 'General'}
                   </Badge>
                 </div>
@@ -367,8 +361,8 @@ const updateStatusMutation = useMutation({
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Location</p>
                     <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      {complaint.location}
+                      <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                      <span className="break-words">{complaint.location}</span>
                     </p>
                   </div>
                 )}
@@ -376,7 +370,7 @@ const updateStatusMutation = useMutation({
                 <div className="pt-4 border-t border-gray-200">
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Submitted By</p>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-400" />
+                    <User className="w-4 h-4 text-gray-400 shrink-0" />
                     {complaint.isAnonymous ? 'Anonymous' : complaint.author?.name}
                   </p>
                 </div>
@@ -384,7 +378,7 @@ const updateStatusMutation = useMutation({
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Created</p>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
                     {new Date(complaint.createdAt).toLocaleString()}
                   </p>
                 </div>
@@ -392,7 +386,7 @@ const updateStatusMutation = useMutation({
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Last Updated</p>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-400" />
+                    <Clock className="w-4 h-4 text-gray-400 shrink-0" />
                     {new Date(complaint.updatedAt).toLocaleString()}
                   </p>
                 </div>
@@ -401,7 +395,7 @@ const updateStatusMutation = useMutation({
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Resolved</p>
                     <p className="text-sm font-medium text-green-700 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="w-4 h-4 shrink-0" />
                       {new Date(complaint.resolvedAt).toLocaleString()}
                     </p>
                   </div>
@@ -410,7 +404,7 @@ const updateStatusMutation = useMutation({
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Views</p>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-gray-400" />
+                    <Eye className="w-4 h-4 text-gray-400 shrink-0" />
                     {complaint.viewCount || 0}
                   </p>
                 </div>
@@ -419,9 +413,9 @@ const updateStatusMutation = useMutation({
 
             {/* Actions Card - SRC/Admin Only */}
             {canManage && (
-              <Card className="p-6 border-0 shadow-lg">
+              <Card className="p-4 sm:p-6 border-0 shadow-lg">
                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Edit className="w-5 h-5 text-green-600" />
+                  <Edit className="w-5 h-5 text-green-600 shrink-0" />
                   Manage Complaint
                 </h3>
 
@@ -431,7 +425,7 @@ const updateStatusMutation = useMutation({
                       <select
                         value={selectedStatus}
                         onChange={(e) => setSelectedStatus(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none"
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none text-gray-900"
                       >
                         <option value="">Select Status</option>
                         <option value="PENDING">Pending</option>
@@ -439,12 +433,12 @@ const updateStatusMutation = useMutation({
                         <option value="RESOLVED">Resolved</option>
                         <option value="REJECTED">Rejected</option>
                       </select>
-                      <div className="flex gap-2">
-                        <Button onClick={handleStatusUpdate} className="flex-1 flex items-center justify-center gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button onClick={handleStatusUpdate} className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white hover:bg-green-700">
                           <Save className="w-4 h-4" />
                           Save
                         </Button>
-                        <Button variant="secondary" onClick={() => setEditingStatus(false)} className="flex items-center gap-2">
+                        <Button variant="secondary" onClick={() => setEditingStatus(false)} className="flex items-center justify-center gap-2">
                           <X className="w-4 h-4" />
                           Cancel
                         </Button>
@@ -464,54 +458,52 @@ const updateStatusMutation = useMutation({
                     </Button>
                   )}
 
-<div className="relative">
-  <input
-    type="file"
-    onChange={handleFileUpload}
-    className="hidden"
-    id="file-upload"
-    accept="image/*,.pdf"
-  />
-  <label htmlFor="file-upload" className="block w-full">
-    <Button
-      type="button" // Change to button type to prevent form submission
-      variant="secondary"
-      disabled={uploadingFile}
-      className="w-full flex items-center justify-center gap-2 cursor-pointer"
-      // Removed as="span"
-    >
-      <Upload className="w-4 h-4" />
-      {uploadingFile ? 'Uploading...' : 'Upload Attachment'}
-    </Button>
-  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="file-upload"
+                      accept="image/*,.pdf"
+                    />
+                    <label htmlFor="file-upload" className="block w-full cursor-pointer">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={uploadingFile}
+                        className="w-full flex items-center justify-center gap-2"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {uploadingFile ? 'Uploading...' : 'Upload Attachment'}
+                      </Button>
+                    </label>
                   </div>
                 </div>
               </Card>
             )}
 
-
             {/* Status History */}
             {complaint.statusHistory && complaint.statusHistory.length > 0 && (
-              <Card className="p-6 border-0 shadow-lg">
+              <Card className="p-4 sm:p-6 border-0 shadow-lg">
                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  <TrendingUp className="w-5 h-5 text-green-600 shrink-0" />
                   Status History
                 </h3>
 
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[300px] overflow-y-auto">
                   {complaint.statusHistory.map((change: any, idx: number) => (
                     <div key={idx} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="w-3 h-3 bg-green-500 rounded-full" />
+                        <div className="w-3 h-3 bg-green-500 rounded-full shrink-0" />
                         {idx < (complaint.statusHistory?.length || 0) - 1 && (
                           <div className="w-0.5 h-full bg-gray-200 my-1" />
                         )}
                       </div>
                       <div className="flex-1 pb-4">
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-gray-900 text-sm">
                           {change.fromStatus} → {change.toStatus}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs text-gray-600">
                           by {change.changedBy} • {new Date(change.changedAt).toLocaleString()}
                         </p>
                       </div>

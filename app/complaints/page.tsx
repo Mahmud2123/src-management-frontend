@@ -53,8 +53,6 @@ export default function ComplaintsPage() {
 
   const complaints: Complaint[] = data?.pages.flatMap(p => p.data) ?? [];
 
-  
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'PENDING': return <Clock className="w-4 h-4" />;
@@ -77,11 +75,11 @@ export default function ComplaintsPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'LOW': return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'LOW': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'MEDIUM': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'HIGH': return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'URGENT': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
@@ -90,15 +88,10 @@ export default function ComplaintsPage() {
       case 'URGENT': return 'bg-gradient-to-r from-red-500 to-red-600';
       case 'HIGH': return 'bg-gradient-to-r from-orange-500 to-orange-600';
       case 'MEDIUM': return 'bg-gradient-to-r from-yellow-500 to-yellow-600';
-      case 'LOW': return 'bg-gradient-to-r from-slate-400 to-slate-500';
+      case 'LOW': return 'bg-gradient-to-r from-blue-400 to-blue-500';
       default: return 'bg-gray-300';
     }
   };
-
-  const filteredComplaints = complaints.filter(c => 
-    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const stats = [
     { label: 'Total', value: complaints.length, color: 'bg-blue-100 text-blue-700', icon: FileText },
@@ -108,7 +101,6 @@ export default function ComplaintsPage() {
     { label: 'Rejected', value: complaints.filter(c => c.status === 'REJECTED').length, color: 'bg-red-100 text-red-700', icon: XCircle },
   ];
 
-  // Check if user can switch between ALL and MINE
   const canSwitchViewScope = user?.role && ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role);
 
   return (
@@ -142,7 +134,7 @@ export default function ComplaintsPage() {
               {user?.role === 'STUDENT' && (
                 <Button
                   onClick={() => router.push('/complaints/create')}
-                  className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 flex items-center gap-2 shadow-xl shadow-green-600/30 rounded-2xl px-6 py-3 h-auto font-bold"
+                  className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 flex items-center gap-2 shadow-xl shadow-green-600/30 rounded-2xl px-6 py-3 h-auto font-bold text-white"
                 >
                   <Plus className="w-5 h-5" />
                   New Entry
@@ -184,9 +176,9 @@ export default function ComplaintsPage() {
               </Button>
 
               <div className="flex items-center gap-2 text-sm">
-  <span className="font-black text-gray-900">{complaints.length}</span>
-  <span className="font-semibold text-gray-500">complaints found</span>
-</div>
+                <span className="font-black text-gray-900">{complaints.length}</span>
+                <span className="font-semibold text-gray-500">complaints found</span>
+              </div>
             </div>
 
             {/* Filters Grid */}
@@ -302,7 +294,7 @@ export default function ComplaintsPage() {
                     {complaint.description}
                   </p>
 
-                  {/* SRC Feedback Section - THE "WHY" */}
+                  {/* SRC Feedback Section */}
                   {complaint.moderationNotes && (
                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-sm">
                       <div className="flex items-center gap-2 mb-2">
@@ -317,12 +309,12 @@ export default function ComplaintsPage() {
                     </div>
                   )}
 
-                  {/* Tags */}
+                  {/* Tags - FIXED VISIBILITY */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={`${getPriorityColor(complaint.priority)} text-xs px-3 py-1 font-black rounded-xl border`}>
+                    <Badge className={`${getPriorityColor(complaint.priority)} text-xs px-3 py-1.5 font-black rounded-xl border font-semibold`}>
                       {complaint.priority}
                     </Badge>
-                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs px-3 py-1 font-bold rounded-xl">
+                    <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-xs px-3 py-1.5 font-bold rounded-xl border">
                       {complaint.category?.name || 'General'}
                     </Badge>
                   </div>
@@ -386,7 +378,7 @@ export default function ComplaintsPage() {
             {user?.role === 'STUDENT' && (
               <Button
                 onClick={() => router.push('/complaints/create')}
-                className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 rounded-2xl px-8 py-4 h-auto font-bold shadow-xl shadow-green-600/30"
+                className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 rounded-2xl px-8 py-4 h-auto font-bold shadow-xl shadow-green-600/30 text-white"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Submit Your First Complaint

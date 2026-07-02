@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/providers/auth';
-import { ThemeProvider } from '@/providers/ThemeProvider';
 import { ToastProvider } from '@/providers/sonner';
 import LayoutWrapper from './LayoutWrapper';
 import { ReactQueryProvider } from '@/providers/react-query';
@@ -22,19 +21,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className={inter.className}>
-        <ThemeProvider>
-          <ReactQueryProvider>
-            <AuthProvider>
-              <ToastProvider>
-                <LayoutWrapper>
-                  {children}
-                </LayoutWrapper>
-              </ToastProvider>
-            </AuthProvider>
-          </ReactQueryProvider>
-        </ThemeProvider>
+        <ReactQueryProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+            </ToastProvider>
+          </AuthProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   );

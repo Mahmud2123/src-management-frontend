@@ -2,7 +2,7 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -17,6 +17,7 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
   },
   (error: AxiosError) => {
@@ -34,8 +35,6 @@ apiClient.interceptors.response.use(
       if (typeof window !== 'undefined') {
         localStorage.removeItem('src_user');
         localStorage.removeItem('src_token');
-        // Redirect to landing page, not /auth
-        // ✅ FIXED: Check if not already on landing page
         if (window.location.pathname !== '/') {
           window.location.href = '/';
         }
