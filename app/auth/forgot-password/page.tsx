@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { forgotPasswordAPI } from '@/lib/api';
 import { toast } from 'sonner';
 import {
   Mail, ArrowLeft, Send, CheckCircle, AlertCircle, Shield, Sparkles
