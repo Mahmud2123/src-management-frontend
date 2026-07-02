@@ -140,6 +140,7 @@
 
 .dark .recharts-legend-item-text {
   color: #e5e7eb !important;
+<<<<<<< HEAD
 }
 
 
@@ -187,4 +188,6 @@
   .badge-text {
     @apply text-gray-700 dark:text-gray-200;
   }
+=======
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
 }

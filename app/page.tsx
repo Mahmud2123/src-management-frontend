@@ -1,5 +1,6 @@
 'use client';
 
+<<<<<<< HEAD
 import { useState } from 'react';
 import { useAuth } from '@/providers/auth';
 import { useRouter } from 'next/navigation';
@@ -11,15 +12,35 @@ import {
 
 export default function AuthPage() {
   const { login } = useAuth();
+=======
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/providers/auth';
+import { Button } from '@/components/Button';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import {
+  Shield, Lock, Mail, GraduationCap, ArrowRight,
+  Eye, EyeOff, Award, Users, TrendingUp
+} from 'lucide-react';
+
+export default function AuthPage() {
+  const { login, user } = useAuth();
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+<<<<<<< HEAD
+=======
+
+  // Login State
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
   const [loginData, setLoginData] = useState({
     email: '',
     password: '',
   });
 
+<<<<<<< HEAD
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -30,12 +51,34 @@ export default function AuthPage() {
       return;
     }
 
+=======
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
     setLoading(true);
 
     try {
       await login(loginData.email, loginData.password);
+<<<<<<< HEAD
     } catch (err: any) {
       console.error('Login error:', err);
+=======
+      toast.success('Welcome back!', {
+        description: 'Redirecting to your dashboard...',
+        duration: 2000,
+      });
+      router.push('/dashboard');
+    } catch (err: any) {
+      toast.error('Authentication Failed', {
+        description: err.customMessage || err.message || 'Invalid email or password. Please try again.',
+      });
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
     } finally {
       setLoading(false);
     }
@@ -43,17 +86,33 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-green-900 via-green-800 to-green-950">
+<<<<<<< HEAD
       {/* Animated Background */}
+=======
+      {/* Animated Background Pattern */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-green-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-400/10 rounded-full blur-3xl animate-pulse delay-700"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-600/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+<<<<<<< HEAD
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
       </div>
 
       {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 relative z-10 flex-col justify-center px-16 py-12">
         <div className="max-w-lg">
+=======
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
+      </div>
+
+      {/* Left Panel - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 relative z-10 flex-col justify-center px-16 py-12">
+        <div className="max-w-lg">
+          {/* Logo and Header */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
           <div className="mb-12">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-black/20 transform hover:scale-105 transition-transform duration-300">
@@ -76,11 +135,32 @@ export default function AuthPage() {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="grid grid-cols-1 gap-4 mb-12">
             {[
               { icon: GraduationCap, title: 'For SZU Community', description: 'Students & SRC Members' },
               { icon: Shield, title: 'Secure Platform', description: 'Confidential & Protected' },
               { icon: TrendingUp, title: 'Real-time Tracking', description: 'Monitor your submissions' },
+=======
+          {/* Features Grid */}
+          <div className="grid grid-cols-1 gap-4 mb-12">
+            {[
+              { 
+                icon: GraduationCap, 
+                title: 'For SZU Community',
+                description: 'Students & SRC Members'
+              },
+              { 
+                icon: Shield, 
+                title: 'Secure Platform',
+                description: 'Confidential & Protected'
+              },
+              { 
+                icon: TrendingUp, 
+                title: 'Real-time Tracking',
+                description: 'Monitor your submissions'
+              },
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
             ].map((feature, idx) => (
               <div key={idx} className="flex items-start gap-4 p-4 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 hover:bg-white/15 transition-all group">
                 <div className="w-12 h-12 bg-green-400/20 rounded-xl flex items-center justify-center group-hover:bg-green-400/30 transition-colors shrink-0">
@@ -94,6 +174,10 @@ export default function AuthPage() {
             ))}
           </div>
 
+<<<<<<< HEAD
+=======
+          {/* Help Box */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
           <div className="p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-green-400/20 rounded-lg flex items-center justify-center">
@@ -114,6 +198,10 @@ export default function AuthPage() {
       {/* Right Panel - Login Form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 relative z-10">
         <div className="w-full max-w-md">
+<<<<<<< HEAD
+=======
+          {/* Mobile Logo */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
           <div className="lg:hidden mb-10 text-center">
             <div className="inline-flex flex-col items-center gap-4">
               <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30">
@@ -126,11 +214,18 @@ export default function AuthPage() {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 md:p-12">
+=======
+          {/* Login Card */}
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 md:p-12 backdrop-blur-xl">
+            {/* Header */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
             <div className="mb-8 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl mb-4 shadow-lg shadow-green-500/30">
                 <Lock className="w-8 h-8 text-white" />
               </div>
+<<<<<<< HEAD
               <h3 className="text-3xl font-black text-gray-900 mb-2">Welcome Back</h3>
               <p className="text-gray-600 text-lg font-medium">Sign in to access your account</p>
             </div>
@@ -138,6 +233,22 @@ export default function AuthPage() {
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-sm font-bold text-gray-700">University Email</label>
+=======
+              <h3 className="text-3xl font-black text-gray-900 mb-2">
+                Welcome Back
+              </h3>
+              <p className="text-gray-600 text-lg font-medium">
+                Sign in to access your account
+              </p>
+            </div>
+
+            {/* LOGIN FORM */}
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-gray-700">
+                  University Email
+                </label>
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 <div className="relative group">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-600 transition-colors pointer-events-none z-10" />
                   <input
@@ -152,7 +263,13 @@ export default function AuthPage() {
               </div>
 
               <div className="space-y-2">
+<<<<<<< HEAD
                 <label className="block text-sm font-bold text-gray-700">Password</label>
+=======
+                <label className="block text-sm font-bold text-gray-700">
+                  Password
+                </label>
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-600 transition-colors pointer-events-none z-10" />
                   <input
@@ -175,8 +292,18 @@ export default function AuthPage() {
 
               <div className="flex items-center justify-between pt-2">
                 <label className="flex items-center gap-2 cursor-pointer group">
+<<<<<<< HEAD
                   <input type="checkbox" className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer" />
                   <span className="text-sm text-gray-600 font-medium group-hover:text-gray-900">Remember me</span>
+=======
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer" 
+                  />
+                  <span className="text-sm text-gray-600 font-medium group-hover:text-gray-900">
+                    Remember me
+                  </span>
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 </label>
                 <button 
                   type="button"
@@ -206,14 +333,25 @@ export default function AuthPage() {
               </button>
             </form>
 
+<<<<<<< HEAD
             <div className="mt-8 pt-6 border-t border-gray-100">
               <p className="text-center text-sm text-gray-500">
                 <span className="inline-block mr-1 text-green-600">©</span>
+=======
+            {/* Additional Info */}
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <p className="text-center text-sm text-gray-500">
+                <Award className="w-4 h-4 inline mr-1 text-green-600" />
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 Official SZU SRC Portal
               </p>
             </div>
           </div>
 
+<<<<<<< HEAD
+=======
+          {/* Footer */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
           <p className="text-center mt-8 text-sm text-green-200 font-medium">
             © 2026 Sa'adu Zungur University SRC. All rights reserved.
           </p>

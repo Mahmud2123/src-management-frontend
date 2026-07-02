@@ -3,6 +3,7 @@
 
 import { Toaster } from 'sonner';
 import { ReactNode } from 'react';
+<<<<<<< HEAD
 import { useTheme } from './ThemeProvider';
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -21,3 +22,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     </>
   );
 }
+=======
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  return (
+    <>
+      {children}
+      <Toaster position="top-right" richColors />
+    </>
+  );
+}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7

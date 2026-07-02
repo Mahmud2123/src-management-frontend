@@ -63,8 +63,13 @@ export default function DashboardPage() {
 
   if (error) {
     return (
+<<<<<<< HEAD
       <div className="flex items-center justify-center min-h-screen p-6 dark:bg-gray-950">
         <Card className="p-8 max-w-md text-center dark:bg-gray-800 dark:border-gray-700">
+=======
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <Card className="p-8 max-w-md text-center dark:bg-gray-800">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Failed to Load Statistics</h3>
           <p className="text-gray-600 dark:text-gray-300">{error.message}</p>
@@ -107,7 +112,11 @@ export default function DashboardPage() {
     onClick 
   }: any) => (
     <Card 
+<<<<<<< HEAD
       className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-0 cursor-pointer dark:bg-gray-800 dark:hover:shadow-2xl dark:border-gray-700" 
+=======
+      className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-0 cursor-pointer dark:bg-gray-800 dark:hover:shadow-2xl" 
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
       onClick={onClick}
     >
       <div className={`absolute inset-0 ${bgColor} opacity-5 dark:opacity-10 group-hover:opacity-10 dark:group-hover:opacity-15 transition-opacity`}></div>
@@ -134,15 +143,26 @@ export default function DashboardPage() {
   );
 
   return (
+<<<<<<< HEAD
     <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 dark:from-gray-900 dark:to-green-950/30 p-6 space-y-6 transition-colors duration-300">
+=======
+    <div className="w-full p-6 space-y-6 bg-gradient-to-br from-gray-50 to-green-50/30 dark:from-gray-900 dark:to-green-950/30 p-6 space-y-6">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
+<<<<<<< HEAD
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-300">
               Welcome back, {user?.name} 👋
             </h1>
             <p className="text-gray-600 dark:text-gray-400 flex items-center gap-2 transition-colors duration-300">
+=======
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Welcome back, {user?.name} 👋
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 flex items-center gap-2">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
               <Calendar className="w-4 h-4" />
               {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', 
@@ -153,14 +173,22 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+<<<<<<< HEAD
             <Badge variant="secondary" className="px-4 py-2 text-sm font-semibold dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700">
+=======
+            <Badge variant="secondary" className="px-4 py-2 text-sm font-semibold dark:bg-gray-800 dark:text-gray-200">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
               <Activity className="w-4 h-4 mr-2" />
               {user?.role?.replace('_', ' ')}
             </Badge>
           </div>
         </div>
 
+<<<<<<< HEAD
         {/* Stats Grid - Already has dark mode classes */}
+=======
+        {/* Stats Grid */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title={['STUDENT', 'CLASS_REP'].includes(user?.role || '') ? "My Submissions" : "Total Complaints"}
@@ -204,7 +232,11 @@ export default function DashboardPage() {
           />
         </div>
 
+<<<<<<< HEAD
         {/* Key Metrics Cards - Already have dark mode */}
+=======
+        {/* Key Metrics */}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="p-6 bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white border-0">
             <div className="flex items-center gap-4 mb-4">
@@ -254,6 +286,7 @@ export default function DashboardPage() {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Status Distribution */}
+<<<<<<< HEAD
           <Card className="p-6 border-0 shadow-lg dark:bg-gray-800 dark:shadow-2xl dark:border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -261,6 +294,15 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-300">Current complaint statuses</p>
               </div>
               <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg transition-colors duration-300">
+=======
+          <Card className="p-6 border-0 shadow-lg dark:bg-gray-800 dark:shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Status Distribution</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Current complaint statuses</p>
+              </div>
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 <PieChart className="w-5 h-5 text-green-700 dark:text-green-300" />
               </div>
             </div>
@@ -297,6 +339,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Category Breakdown */}
+<<<<<<< HEAD
           <Card className="p-6 border-0 shadow-lg dark:bg-gray-800 dark:shadow-2xl dark:border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -304,6 +347,15 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-300">Top categories this month</p>
               </div>
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg transition-colors duration-300">
+=======
+          <Card className="p-6 border-0 shadow-lg dark:bg-gray-800 dark:shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Complaints by Category</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Top categories this month</p>
+              </div>
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 <BarChart className="w-5 h-5 text-blue-700 dark:text-blue-300" />
               </div>
             </div>
@@ -344,6 +396,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Priority Distribution */}
+<<<<<<< HEAD
           <Card className="p-6 border-0 shadow-lg dark:bg-gray-800 dark:shadow-2xl dark:border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -351,6 +404,15 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-300">Complaint urgency breakdown</p>
               </div>
               <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg transition-colors duration-300">
+=======
+          <Card className="p-6 border-0 shadow-lg dark:bg-gray-800 dark:shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Priority Levels</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Complaint urgency breakdown</p>
+              </div>
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 <AlertCircle className="w-5 h-5 text-orange-700 dark:text-orange-300" />
               </div>
             </div>
@@ -363,6 +425,7 @@ export default function DashboardPage() {
                 return (
                   <div key={idx}>
                     <div className="flex justify-between items-center mb-2">
+<<<<<<< HEAD
                       <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 transition-colors duration-300">{item.name}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-gray-900 dark:text-white transition-colors duration-300">{item.value}</span>
@@ -370,6 +433,15 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden transition-colors duration-300">
+=======
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">({percentage}%)</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                       <div
                         className={`${colors[idx]} h-3 rounded-full transition-all duration-1000 ease-out`}
                         style={{ width: `${percentage}%` }}
@@ -382,6 +454,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent Activity Card */}
+<<<<<<< HEAD
           <Card className="p-6 border-0 shadow-xl bg-white dark:bg-gray-800 dark:shadow-2xl dark:border-gray-700">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -389,6 +462,15 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1 transition-colors duration-300">Latest updates</p>
               </div>
               <div className="p-2.5 bg-purple-50 dark:bg-purple-900 rounded-xl transition-colors duration-300">
+=======
+          <Card className="p-6 border-0 shadow-xl bg-white dark:bg-gray-800 dark:shadow-2xl">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white">Recent Activity</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">Latest updates</p>
+              </div>
+              <div className="p-2.5 bg-purple-50 dark:bg-purple-900 rounded-xl">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 <Activity className="w-5 h-5 text-purple-600 dark:text-purple-300" />
               </div>
             </div>
@@ -396,31 +478,55 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {loadingActivity ? (
                 <div className="animate-pulse space-y-4">
+<<<<<<< HEAD
                   {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl transition-colors duration-300" />)}
+=======
+                  {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl" />)}
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 </div>
               ) : activities.length > 0 ? (
                 activities.map((activity: any) => (
                   <div 
                     key={activity.id} 
+<<<<<<< HEAD
                     className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
                     onClick={() => activity.complaintId && router.push(`/complaints/${activity.complaintId}`)}
                   >
                     <div className="mt-1.5 flex-shrink-0">
                       <div className={`w-3 h-3 ${getActivityStyle(activity.action)} rounded-full ring-4 ring-white dark:ring-gray-800 shadow-sm transition-colors duration-300`} />
+=======
+                    className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
+                    onClick={() => activity.complaintId && router.push(`/complaints/${activity.complaintId}`)}
+                  >
+                    <div className="mt-1.5 flex-shrink-0">
+                      <div className={`w-3 h-3 ${getActivityStyle(activity.action)} rounded-full ring-4 ring-white dark:ring-gray-800 shadow-sm`} />
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
+<<<<<<< HEAD
                         <p className="text-[15px] font-bold text-gray-900 dark:text-white leading-tight capitalize transition-colors duration-300">
                           {activity.action?.replace(/_/g, ' ').toLowerCase() || "System Update"}
                         </p>
                         
                         <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded uppercase flex-shrink-0 w-fit transition-colors duration-300">
+=======
+                        <p className="text-[15px] font-bold text-gray-900 dark:text-white leading-tight capitalize">
+                          {activity.action?.replace(/_/g, ' ').toLowerCase() || "System Update"}
+                        </p>
+                        
+                        <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded uppercase flex-shrink-0 w-fit">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                           {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
                         </span>
                       </div>
                       
+<<<<<<< HEAD
                       <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300 leading-relaxed break-words transition-colors duration-300">
+=======
+                      <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300 leading-relaxed break-words">
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                         {activity.details || "Action processed successfully."}
                       </p>
                     </div>
@@ -428,7 +534,11 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <div className="text-center py-10">
+<<<<<<< HEAD
                   <p className="text-gray-500 dark:text-gray-400 text-sm italic transition-colors duration-300">No recent activity</p>
+=======
+                  <p className="text-gray-500 dark:text-gray-400 text-sm italic">No recent activity</p>
+>>>>>>> 67da137888c1abf116aa640e6b5ae33acccf1be7
                 </div>
               )}
             </div>
