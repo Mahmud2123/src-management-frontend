@@ -91,7 +91,7 @@ export default function CreateSuggestion() {
           <div>
             <h3 className="font-bold text-gray-900 mb-1">Suggestion Guidelines</h3>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Provide detailed, actionable ideas that can benefit the entire SZU community. 
+              Provide detailed, actionable ideas that can benefit the entire SAZU community. 
               Your suggestion will be reviewed by SRC before being made public.
             </p>
           </div>

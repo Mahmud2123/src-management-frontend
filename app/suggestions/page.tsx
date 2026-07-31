@@ -118,7 +118,7 @@ export default function SuggestionFeed() {
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Lightbulb className="text-yellow-500" /> Suggestion Box
           </h1>
-          <p className="text-gray-600 text-sm">Community-driven ideas for SZU.</p>
+          <p className="text-gray-600 text-sm">Community-driven ideas for SAZU.</p>
         </div>
 
         {canCreateSuggestion && (

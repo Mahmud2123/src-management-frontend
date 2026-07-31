@@ -95,7 +95,7 @@ export default function AuthPage() {
 
           <div className="grid grid-cols-1 gap-4 mb-12">
             {[
-              { icon: GraduationCap, title: 'For SZU Community', description: 'Students, Staff & SRC Members' },
+              { icon: GraduationCap, title: 'For SAZU Community', description: 'Students, Staff & SRC Members' },
               { icon: Shield, title: 'Secure Platform', description: 'Confidential & Protected' },
               { icon: TrendingUp, title: 'Real-time Tracking', description: 'Monitor your submissions' },
             ].map((feature, idx) => (
@@ -120,8 +120,8 @@ export default function AuthPage() {
             </div>
             <p className="text-green-100 text-sm leading-relaxed">
               Contact SRC Office at{' '}
-              <a href="mailto:src@szu.edu.ng" className="text-green-300 font-bold hover:text-green-200 underline">
-                src@szu.edu.ng
+              <a href="mailto:src@sazu.edu.ng" className="text-green-300 font-bold hover:text-green-200 underline">
+                src@sazu.edu.ng
               </a>
             </p>
           </div>
@@ -157,7 +157,7 @@ export default function AuthPage() {
               {/* Email Input */}
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-sm font-bold text-gray-700">
-                  University Email
+                   Email
                 </label>
                 <div className="relative group">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-600 transition-colors pointer-events-none z-10" />
@@ -165,7 +165,7 @@ export default function AuthPage() {
                     id="email"
                     type="email"
                     autoComplete="username"
-                    placeholder="name@student.szu.edu.ng"
+                    placeholder="name@student.com"
                     value={loginData.email}
                     onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                     required
@@ -243,7 +243,7 @@ export default function AuthPage() {
             <div className="mt-8 pt-6 border-t border-gray-100">
               <p className="text-center text-sm text-gray-500">
                 <span className="inline-block mr-1 text-green-600">©</span>
-                Official SZU SRC Portal
+                Official SAZU-SRC Portal
               </p>
             </div>
           </div>

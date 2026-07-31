@@ -184,7 +184,7 @@ export default function ResetPasswordPage() {
                   </label>
                   <input
                     type="email"
-                    placeholder="name@student.szu.edu.ng"
+                    placeholder="name@student.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

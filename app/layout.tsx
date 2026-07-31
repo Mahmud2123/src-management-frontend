@@ -21,10 +21,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: {
     default: "SRC Portal | Sa'adu Zungur University",
-    template: "%s | SRC Portal - SZU",
+    template: "%s | SRC Portal - SAZU",
   },
   description: "Official Student Representative Council Portal for Sa'adu Zungur University",
-  keywords: ['SZU', 'Student Portal', 'SRC', 'Complaints', 'University', 'Bauchi'],
+  keywords: ['SAZU', 'Student Portal', 'SRC', 'Complaints', 'University', 'Bauchi'],
 };
 
 export default function RootLayout({
