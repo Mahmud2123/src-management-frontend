@@ -2,6 +2,11 @@
 import apiClient from './interceptor';
 import type { Complaint, ComplaintStats } from '@/types';
 
+export interface SystemSettings {
+  allowClassRepRegistration: boolean;
+  maintenanceMode: boolean;
+  emailNotifications: boolean;
+}
 /**
  * AUTH ENDPOINTS
  */
@@ -310,6 +315,62 @@ export const fetchModerationQueue = async () => {
   const { data } = await apiClient.get('/moderation/pending');
   return data;
 };
+
+
+// Fetch staff/SRC members for assignment
+export async function fetchMembers() {
+  const response = await apiClient.get('/users/members');
+  return response.data;
+}
+
+// Assign complaint to a member (uses your standard update complaint endpoint)
+export async function assignComplaint(complaintId: string, assignedToId: string) {
+  const response = await apiClient.patch(`/complaints/${complaintId}`, { assignedToId });
+  return response.data;
+}
+
+/**
+ * Fetch global system settings (Admin only).
+ * Includes graceful fallback if backend endpoint is not yet active.
+ */
+export async function fetchSystemSettings(): Promise<SystemSettings> {
+  try {
+    const response = await apiClient.get('/settings');
+    return response.data;
+  } catch (error: any) {
+    // If backend endpoint isn't ready yet (e.g. 404), return safe operational defaults
+    if (error?.response?.status === 404 || error?.response?.status === 500) {
+      console.warn('System settings endpoint not found on server. Using default fallbacks.');
+      return {
+        allowClassRepRegistration: true,
+        maintenanceMode: false,
+        emailNotifications: true,
+      };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Update global system settings (Admin only).
+ * Includes graceful fallback if backend endpoint is not yet active.
+ */
+export async function updateSystemSettings(
+  settings: Partial<SystemSettings>
+): Promise<SystemSettings> {
+  try {
+    const response = await apiClient.patch('/settings', settings);
+    return response.data;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      console.warn('Backend update settings endpoint missing.');
+      // Return updated state locally so UI functions smoothly during development
+      return settings as SystemSettings;
+    }
+    throw error;
+  }
+}
+
 
 // Export the client for custom requests
 export { apiClient };

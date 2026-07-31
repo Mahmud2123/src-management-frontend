@@ -1,18 +1,30 @@
-// app/layout.tsx
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/providers/auth';
 import { ToastProvider } from '@/providers/sonner';
-import LayoutWrapper from './LayoutWrapper';
 import { ReactQueryProvider } from '@/providers/react-query';
+import LayoutWrapper from './LayoutWrapper';
 
-const inter = Inter({ subsets: ['latin'], preload: false });
+const inter = Inter({ 
+  subsets: ['latin'], 
+  display: 'swap',
+  preload: true 
+});
+
+export const viewport: Viewport = {
+  themeColor: '#064e3b',
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
-  title: 'SRC Portal | Sa\'adu Zungur University',
-  description: 'Official Student Representative Council Portal for Sa\'adu Zungur University',
-  keywords: ['SZU', 'Student Portal', 'SRC', 'Complaints', 'University'],
+  title: {
+    default: "SRC Portal | Sa'adu Zungur University",
+    template: "%s | SRC Portal - SZU",
+  },
+  description: "Official Student Representative Council Portal for Sa'adu Zungur University",
+  keywords: ['SZU', 'Student Portal', 'SRC', 'Complaints', 'University', 'Bauchi'],
 };
 
 export default function RootLayout({
@@ -21,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body className={`${inter.className} min-h-full flex flex-col bg-gray-50 text-gray-900`}>
         <ReactQueryProvider>
           <AuthProvider>
             <ToastProvider>

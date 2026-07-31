@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Initialize auth state from localStorage
+  // 1. Initialize auth state from localStorage
   useEffect(() => {
     const initializeAuth = () => {
       try {
@@ -73,27 +73,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Handle route protection after initialization
+  // 2. Client-side route protection
+ // 2. Client-side route protection
   useEffect(() => {
     if (!isInitialized) return;
 
     const isLandingPage = pathname === '/';
-    const isAuthRoute = pathname?.startsWith('/auth');
-    const isPublicRoute = isLandingPage || isAuthRoute;
+    const isAuthRoute = pathname?.startsWith('/auth') || pathname?.startsWith('/login');
+    const isMaintenanceRoute = pathname === '/maintenance';
+    const isPublicRoute = isLandingPage || isAuthRoute || isMaintenanceRoute;
 
-    // If authenticated and on public route -> go to dashboard
+    // If maintenance mode is active, allow everyone (auth or unauth) to view /maintenance peacefully
+    if (isMaintenanceRoute) {
+      // If an admin happens to hit /maintenance, send them back to dashboard
+      if (user) {
+        const normalizedRole = String(user.role || '').toUpperCase();
+        const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'].includes(normalizedRole);
+        if (isAdmin) {
+          router.replace('/dashboard');
+        }
+      }
+      return;
+    }
+
+    // Authenticated users on landing/auth routes -> go to dashboard
     if (user && isPublicRoute) {
       router.replace('/dashboard');
       return;
     }
 
-    // If not authenticated and on protected route -> go to landing
+    // Unauthenticated users on protected routes -> go to landing
     if (!user && !isPublicRoute) {
       router.replace('/');
       return;
     }
   }, [user, pathname, isInitialized, router]);
 
+  // 3. Login method
   const login = useCallback(async (email: string, password: string) => {
     try {
       const res = await loginAPI(email, password);
@@ -107,27 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(res.user));
       localStorage.setItem(STORAGE_KEYS.TOKEN, res.token);
-
-      // Success toast
-      toast.success('Welcome back!', {
-        description: 'Redirecting to your dashboard...',
-      });
-
-      router.replace('/dashboard');
     } catch (err: any) {
-      // Extract error message
       let errorMessage = 'Invalid email or password. Please try again.';
       
-      // Check for network errors
       if (err.type === 'network' || err.code === 'ERR_NETWORK' || !err.response) {
         errorMessage = 'Unable to connect to the server. Please check your internet connection.';
-      } 
-      // Check for 401 (invalid credentials)
-      else if (err.response?.status === 401) {
+      } else if (err.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please try again.';
-      } 
-      // Check for validation errors
-      else if (err.response?.data) {
+      } else if (err.response?.data) {
         const { message, error } = err.response.data;
         if (Array.isArray(message)) {
           errorMessage = message[0] || errorMessage;
@@ -136,24 +139,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (typeof error === 'string') {
           errorMessage = error;
         }
-      } 
-      // Use custom message if available
-      else if (err.customMessage) {
+      } else if (err.customMessage) {
         errorMessage = err.customMessage;
       }
 
-      // Show error toast ONLY - no inline error
-      toast.error('Login Failed', {
-        description: errorMessage,
-      });
-
-      // Re-throw for component-level handling (but component won't show inline error)
-      const enhancedError = new Error(errorMessage);
-      (enhancedError as any).originalError = err;
-      throw enhancedError;
+      throw new Error(errorMessage);
     }
-  }, [router]);
+  }, []);
 
+  // 4. Logout method
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);

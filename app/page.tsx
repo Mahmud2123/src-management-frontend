@@ -5,8 +5,15 @@ import { useAuth } from '@/providers/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  Shield, Lock, Mail, ArrowRight,
-  Eye, EyeOff, GraduationCap, Users, TrendingUp
+  Shield,
+  Lock,
+  Mail,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  Users,
+  TrendingUp,
 } from 'lucide-react';
 
 export default function AuthPage() {
@@ -22,8 +29,9 @@ export default function AuthPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!loginData.email || !loginData.password) {
+
+    const cleanEmail = loginData.email.trim();
+    if (!cleanEmail || !loginData.password) {
       toast.error('Validation Error', {
         description: 'Please enter both email and password',
       });
@@ -33,9 +41,18 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      await login(loginData.email, loginData.password);
+      await login(cleanEmail, loginData.password);
+      toast.success('Authentication Successful', {
+        description: 'Redirecting to your dashboard...',
+      });
+      // AuthProvider handles user state; navigate smoothly to dashboard
+      router.replace('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
+      toast.error('Authentication Failed', {
+        description:
+          err?.message || 'Invalid email or password. Please try again.',
+      });
     } finally {
       setLoading(false);
     }
@@ -43,12 +60,12 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-green-900 via-green-800 to-green-950">
-      {/* Animated Background */}
+      {/* Background Decorative Blurs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-green-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-400/10 rounded-full blur-3xl animate-pulse delay-700"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-600/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-green-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-400/10 rounded-full blur-3xl animate-pulse delay-700" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-600/10 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40" />
       </div>
 
       {/* Left Panel */}
@@ -78,7 +95,7 @@ export default function AuthPage() {
 
           <div className="grid grid-cols-1 gap-4 mb-12">
             {[
-              { icon: GraduationCap, title: 'For SZU Community', description: 'Students & SRC Members' },
+              { icon: GraduationCap, title: 'For SZU Community', description: 'Students, Staff & SRC Members' },
               { icon: Shield, title: 'Secure Platform', description: 'Confidential & Protected' },
               { icon: TrendingUp, title: 'Real-time Tracking', description: 'Monitor your submissions' },
             ].map((feature, idx) => (
@@ -114,6 +131,7 @@ export default function AuthPage() {
       {/* Right Panel - Login Form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 relative z-10">
         <div className="w-full max-w-md">
+          {/* Mobile Header */}
           <div className="lg:hidden mb-10 text-center">
             <div className="inline-flex flex-col items-center gap-4">
               <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30">
@@ -136,12 +154,17 @@ export default function AuthPage() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6">
+              {/* Email Input */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">University Email</label>
+                <label htmlFor="email" className="block text-sm font-bold text-gray-700">
+                  University Email
+                </label>
                 <div className="relative group">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-600 transition-colors pointer-events-none z-10" />
                   <input
+                    id="email"
                     type="email"
+                    autoComplete="username"
                     placeholder="name@student.szu.edu.ng"
                     value={loginData.email}
                     onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
@@ -151,12 +174,17 @@ export default function AuthPage() {
                 </div>
               </div>
 
+              {/* Password Input */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">Password</label>
+                <label htmlFor="password" className="block text-sm font-bold text-gray-700">
+                  Password
+                </label>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-600 transition-colors pointer-events-none z-10" />
                   <input
+                    id="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     placeholder="Enter your password"
                     value={loginData.password}
                     onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
@@ -166,19 +194,24 @@ export default function AuthPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors z-10"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors z-10 p-1"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
+              {/* Remember & Forgot Password Options */}
               <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input type="checkbox" className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer" />
+                <label className="flex items-center gap-2 cursor-pointer group select-none">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer"
+                  />
                   <span className="text-sm text-gray-600 font-medium group-hover:text-gray-900">Remember me</span>
                 </label>
-                <button 
+                <button
                   type="button"
                   onClick={() => router.push('/auth/forgot-password')}
                   className="text-sm font-bold text-green-700 hover:text-green-800 hover:underline transition-all"
@@ -187,6 +220,7 @@ export default function AuthPage() {
                 </button>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -194,7 +228,7 @@ export default function AuthPage() {
               >
                 {loading ? (
                   <>
-                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     <span>Authenticating...</span>
                   </>
                 ) : (

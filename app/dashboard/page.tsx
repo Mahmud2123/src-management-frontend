@@ -1,416 +1,518 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useAuth } from '@/providers/auth';
 import { useComplaints } from '@/hooks/useComplaints';
-import { Select } from '@/components/Select';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { fetchCategories } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/providers/auth';
-import { Complaint } from '@/types';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
+import { io, Socket } from 'socket.io-client';
 import {
-  Search, Filter, Plus, FileText, Clock, CheckCircle, XCircle,
-  AlertCircle, MapPin, User, Calendar, MessageSquare, Eye,
-  SlidersHorizontal, RefreshCw, Download, TrendingUp, ShieldCheck,
-  AlertTriangle
+  FileText, Clock, CheckCircle, TrendingUp,
+  Plus, Users, ShieldAlert, Building, BookOpen,
+  ArrowRight, Sparkles, Activity, BellRing, X, Send, Megaphone, ShieldCheck
 } from 'lucide-react';
 
-export default function ComplaintsPage() {
+export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: fetchCategories
+  // Strict role checking matching the sidebar hierarchy
+  const userRole = user?.role ? String(user.role).toUpperCase() : 'STUDENT';
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(userRole);
+  const isStudentOrRep = ['STUDENT', 'CLASS_REP'].includes(userRole);
+
+  // Real-time broadcast announcement state with localStorage persistence
+  const [announcement, setAnnouncement] = useState<{ title: string; message: string; timestamp: string } | null>(null);
+
+  // Broadcast Modal State for Admin/SRC
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [isSubmittingBroadcast, setIsSubmittingBroadcast] = useState(false);
+  const [broadcastFeedback, setBroadcastFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Initialize Socket.io connection & load cached broadcast
+  useEffect(() => {
+    const cachedBroadcast = localStorage.getItem('active_institutional_broadcast');
+    if (cachedBroadcast) {
+      try {
+        setAnnouncement(JSON.parse(cachedBroadcast));
+      } catch (e) {
+        localStorage.removeItem('active_institutional_broadcast');
+      }
+    }
+
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+    let socket: Socket | null = null;
+
+    try {
+      socket = io(socketUrl, {
+        transports: ['polling', 'websocket'], // Fixes connection closure errors
+        autoConnect: true,
+      });
+
+      socket.on('ADMIN_BROADCAST', (data) => {
+        const incoming = {
+          title: data.title || 'Institutional Broadcast',
+          message: data.message || data.content,
+          timestamp: data.timestamp 
+            ? new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setAnnouncement(incoming);
+        localStorage.setItem('active_institutional_broadcast', JSON.stringify(incoming));
+      });
+    } catch (e) {
+      console.error('Socket.io connection error:', e);
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, []);
+
+  const handleDismissBroadcast = () => {
+    setAnnouncement(null);
+    localStorage.removeItem('active_institutional_broadcast');
+  };
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) return;
+
+    setIsSubmittingBroadcast(true);
+    setBroadcastFeedback(null);
+
+    try {
+      await api.post('/admin/broadcast', {
+        title: broadcastTitle,
+        message: broadcastMessage,
+      });
+
+      setBroadcastFeedback({ type: 'success', text: 'Broadcast sent successfully!' });
+      setBroadcastTitle('');
+      setBroadcastMessage('');
+      setTimeout(() => {
+        setShowBroadcastModal(false);
+        setBroadcastFeedback(null);
+      }, 1500);
+    } catch (err: any) {
+      setBroadcastFeedback({ 
+        type: 'error', 
+        text: err?.response?.data?.message || 'Failed to send broadcast. Please try again.' 
+      });
+    } finally {
+      setIsSubmittingBroadcast(false);
+    }
+  };
+
+  // Fetch complaints data to compute quick metrics
+  const { data } = useComplaints({
+    roleFilter: isAdmin ? 'ALL' : 'MINE',
   });
 
-  // Intelligent default role filter based on user role
-  const getDefaultRoleFilter = () => {
-    if (!user?.role) return 'MINE';
-    if (['STUDENT', 'CLASS_REP'].includes(user.role)) return 'MINE';
-    if (['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role)) return 'ALL';
-    return 'MINE';
-  };
+  const complaints: any[] = useMemo(() => {
+    return data?.pages?.flatMap((p: any) => p.data) ?? [];
+  }, [data]);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [status, setStatus] = useState('');
-  const [priority, setPriority] = useState('');
-  const [category, setCategory] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'MINE'>(getDefaultRoleFilter());
-  const [showFilters, setShowFilters] = useState(false);
+  const stats = useMemo(() => {
+    const pending = complaints.filter(c => ['PENDING', 'PENDING_REVIEW'].includes(String(c.status).toUpperCase())).length;
+    const inProgress = complaints.filter(c => String(c.status).toUpperCase() === 'IN_PROGRESS').length;
+    const resolved = complaints.filter(c => String(c.status).toUpperCase() === 'RESOLVED').length;
+    
+    return {
+      total: complaints.length,
+      pending,
+      inProgress,
+      resolved,
+    };
+  }, [complaints]);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } = useComplaints({
-    status,
-    priority,
-    categoryId: category || '',
-    roleFilter: roleFilter as 'ALL' | 'MINE',
-    search: searchQuery,
-  });
-
-  const complaints: Complaint[] = data?.pages.flatMap(p => p.data) ?? [];
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'PENDING': return <Clock className="w-4 h-4" />;
-      case 'IN_PROGRESS': return <TrendingUp className="w-4 h-4" />;
-      case 'RESOLVED': return <CheckCircle className="w-4 h-4" />;
-      case 'REJECTED': return <XCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
+  const leadershipTeam = [
+    {
+      title: 'Vice-Chancellor',
+      name: 'Prof. [VC Name Placeholder]',
+      office: 'Office of the Vice-Chancellor',
+      imagePlaceholder: 'VC',
+      badgeColor: 'bg-purple-100 text-purple-800 border-purple-200'
+    },
+    {
+      title: 'Dean of Student Affairs',
+      name: 'Dr. [Dean Name Placeholder]',
+      office: 'Student Affairs Division',
+      imagePlaceholder: 'DSA',
+      badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
+    },
+    {
+      title: 'SRC President',
+      name: 'Comrade [SRC President Placeholder]',
+      office: 'Student Representative Council',
+      imagePlaceholder: 'SRC',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'RESOLVED': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'REJECTED': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'LOW': return 'bg-slate-100 text-slate-700 border-slate-200';
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'HIGH': return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'URGENT': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const getPriorityBarColor = (priority: string) => {
-    switch (priority) {
-      case 'URGENT': return 'bg-gradient-to-r from-red-500 to-red-600';
-      case 'HIGH': return 'bg-gradient-to-r from-orange-500 to-orange-600';
-      case 'MEDIUM': return 'bg-gradient-to-r from-yellow-500 to-yellow-600';
-      case 'LOW': return 'bg-gradient-to-r from-slate-400 to-slate-500';
-      default: return 'bg-gray-300';
-    }
-  };
-
-  const stats = [
-    { label: 'Total', value: complaints.length, color: 'bg-blue-100 text-blue-700', icon: FileText },
-    { label: 'Pending', value: complaints.filter(c => c.status === 'PENDING').length, color: 'bg-amber-100 text-amber-700', icon: Clock },
-    { label: 'In Progress', value: complaints.filter(c => c.status === 'IN_PROGRESS').length, color: 'bg-blue-100 text-blue-700', icon: TrendingUp },
-    { label: 'Resolved', value: complaints.filter(c => c.status === 'RESOLVED').length, color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
-    { label: 'Rejected', value: complaints.filter(c => c.status === 'REJECTED').length, color: 'bg-red-100 text-red-700', icon: XCircle },
   ];
 
-  const canSwitchViewScope = user?.role && ['ADMIN', 'SRC_MEMBER', 'SRC_EXECUTIVE'].includes(user.role);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/20 to-emerald-50/30 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Modern Sazu Header */}
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100/50 backdrop-blur-sm">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl flex items-center justify-center shadow-lg shadow-green-600/30">
-                  <FileText className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/20 to-emerald-50/30 p-4 sm:p-6 lg:p-8 select-none">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* --- LIVE WEBSOCKET ANNOUNCEMENT BANNER --- */}
+        {announcement && (
+          <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 text-white shadow-lg flex items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-md">
+                <BellRing className="w-6 h-6 text-white animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider bg-black/20 px-2 py-0.5 rounded text-white">Broadcast Alert</span>
+                  <span className="text-xs text-amber-100 font-semibold">{announcement.timestamp}</span>
                 </div>
-                {roleFilter === 'MINE' ? 'My Submissions' : 'Complaints Ledger'}
+                <h4 className="font-bold text-sm sm:text-base mt-0.5 text-white">{announcement.title}: {announcement.message}</h4>
+              </div>
+            </div>
+            <button 
+              onClick={handleDismissBroadcast} 
+              className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* --- WELCOME BANNER WITH HIGH-CONTRAST HEADER CONTROLS --- */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-green-800 via-green-700 to-emerald-800 rounded-3xl p-6 sm:p-10 text-white shadow-xl shadow-green-900/10">
+          <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="max-w-2xl space-y-4">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold tracking-wide text-white">
+                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                Sa'adu Zungur University (SAZU) Portal
+              </div>
+              
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
+                Welcome back, {user?.name?.split(' ')[0] || 'Member'}! 👋
               </h1>
-              <p className="text-gray-500 font-semibold mt-2 ml-1">
-                Sa'adu Zungur University Management System
+              
+              <p className="text-green-100 text-sm sm:text-base font-medium leading-relaxed">
+                {isAdmin 
+                  ? 'You are logged into the Administrative Command Center. Monitor student feedback, manage submissions, verify reports, and broadcast live alerts.'
+                  : 'Access institutional resources, connect with university leadership, and submit academic or welfare complaints effortlessly.'}
               </p>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => refetch()}
-                className="flex items-center gap-2 rounded-2xl px-5 py-3 h-auto font-bold hover:shadow-md transition-all"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Refresh
-              </Button>
-              
-              {user?.role === 'STUDENT' && (
-                <Button
-                  onClick={() => router.push('/complaints/create')}
-                  className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 flex items-center gap-2 shadow-xl shadow-green-600/30 rounded-2xl px-6 py-3 h-auto font-bold text-white"
+
+            {/* HEADER TOP-RIGHT ACTION BUTTONS (FULLY VISIBLE SOLID TEXT & CONTRAST) */}
+            <div className="flex flex-wrap items-center gap-3">
+              {isStudentOrRep && (
+                <>
+                  <button
+                    onClick={() => router.push('/complaints?filter=MINE')}
+                    className="bg-white text-green-900 hover:bg-green-50 font-bold px-5 py-3.5 rounded-2xl shadow-lg transition-all flex items-center gap-2.5 text-sm cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-green-700 flex-shrink-0" />
+                    <span>View My Complaints</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push('/complaints/create')}
+                    className="bg-emerald-900 text-white hover:bg-emerald-950 border border-emerald-600 font-bold px-5 py-3.5 rounded-2xl shadow-lg transition-all flex items-center gap-2.5 text-sm cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-white flex-shrink-0" />
+                    <span>Raise Complaint</span>
+                  </button>
+                </>
+              )}
+
+              {isAdmin && (
+                <button
+                  onClick={() => setShowBroadcastModal(true)}
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-black px-6 py-3.5 rounded-2xl shadow-xl shadow-amber-600/30 transition-all flex items-center gap-2.5 text-sm cursor-pointer"
                 >
-                  <Plus className="w-5 h-5" />
-                  New Entry
-                </Button>
+                  <Megaphone className="w-5 h-5 animate-pulse text-white flex-shrink-0" />
+                  <span>Broadcast Alert</span>
+                </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Enhanced Search and Filters */}
-        <Card className="p-6 border-0 shadow-lg rounded-3xl bg-white/80 backdrop-blur-sm">
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-600 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search complaints by title or description..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none transition-all duration-200 text-gray-900 placeholder:text-gray-400 font-medium"
-              />
+        {/* --- UNIVERSITY LEADERSHIP & DIRECTORY (FIXED VC TEXT & CONTRAST) --- */}
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">University Leadership & Directory</h2>
+              <p className="text-sm text-gray-600 font-medium">Key offices overseeing student welfare and administration</p>
             </div>
+          </div>
 
-            {/* Filter Toggle */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="secondary"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 rounded-xl font-bold"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                {showFilters ? 'Hide Filters' : 'Show Filters'}
-                {(status || priority || category) && (
-                  <Badge className="ml-2 bg-green-600 text-white rounded-full px-2 py-0.5 text-[10px] font-black">
-                    ACTIVE
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {leadershipTeam.map((leader, idx) => (
+              <Card key={idx} className="p-6 border-0 shadow-md rounded-3xl bg-white space-y-4 hover:shadow-xl transition-all group">
+                <div className="flex items-center justify-between">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-700 to-green-900 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-green-900/20 group-hover:scale-105 transition-transform">
+                    {leader.imagePlaceholder}
+                  </div>
+                  <Badge className={`${leader.badgeColor} border font-bold text-xs px-3 py-1 rounded-full`}>
+                    {leader.title}
                   </Badge>
-                )}
-              </Button>
-
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-black text-gray-900">{complaints.length}</span>
-                <span className="font-semibold text-gray-500">complaints found</span>
-              </div>
-            </div>
-
-            {/* Filters Grid */}
-            {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
-                <Select
-                  label="Status"
-                  value={status}
-                  onChange={setStatus}
-                  options={[
-                    { value: '', label: 'All Statuses' },
-                    { value: 'PENDING', label: 'Pending' },
-                    { value: 'IN_PROGRESS', label: 'In Progress' },
-                    { value: 'RESOLVED', label: 'Resolved' },
-                    { value: 'REJECTED', label: 'Rejected' },
-                  ]}
-                />
-
-                <Select
-                  label="Priority"
-                  value={priority}
-                  onChange={setPriority}
-                  options={[
-                    { value: '', label: 'All Priorities' },
-                    { value: 'LOW', label: 'Low' },
-                    { value: 'MEDIUM', label: 'Medium' },
-                    { value: 'HIGH', label: 'High' },
-                    { value: 'URGENT', label: 'Urgent' },
-                  ]}
-                />
-
-                <Select
-                  label="Category"
-                  value={category}
-                  onChange={setCategory}
-                  options={[
-                    { value: '', label: 'All Categories' },
-                    ...categories
-                  ]}
-                />
-
-                {canSwitchViewScope && (
-                  <Select
-                    label="View Scope"
-                    value={roleFilter}
-                    onChange={(v) => setRoleFilter(v as 'ALL' | 'MINE')}
-                    options={[
-                      { value: 'MINE', label: 'My Complaints' },
-                      { value: 'ALL', label: 'All Complaints' },
-                    ]}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        </Card>
-
-        {/* Stats Summary - Enhanced */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {stats.map((stat, idx) => (
-            <Card key={idx} className="p-5 border-0 shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl bg-white/90 backdrop-blur-sm group cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${stat.color} group-hover:scale-110 transition-transform`}>
-                  <stat.icon className="w-5 h-5" />
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-3xl font-black text-gray-900">{stat.value}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        {/* Complaints Grid - Enhanced */}
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto"></div>
-              <p className="text-gray-600 font-bold">Loading complaints...</p>
-            </div>
-          </div>
-        ) : complaints.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {complaints.map((complaint: any) => (
-              <Card
-                key={complaint.id}
-                className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 overflow-hidden rounded-3xl bg-white/90 backdrop-blur-sm hover:-translate-y-1"
-                onClick={() => router.push(`/complaints/${complaint.id}`)}
-              >
-                {/* Enhanced Priority Indicator */}
-                <div className={`h-2 ${getPriorityBarColor(complaint.priority)}`}></div>
-
-                <div className="p-6 space-y-4">
-                  {/* Header with ID Badge */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 space-y-2">
-                      <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] font-black px-2.5 py-1 rounded-lg">
-                        #{complaint.id.slice(-6).toUpperCase()}
-                      </Badge>
-                      <h3 className="text-xl font-black text-gray-900 group-hover:text-green-700 transition-colors line-clamp-2 leading-tight">
-                        {complaint.title}
-                      </h3>
-                    </div>
-                    <Badge className={`${getStatusColor(complaint.status)} flex items-center gap-1.5 px-3 py-1.5 border rounded-xl whitespace-nowrap`}>
-                      {getStatusIcon(complaint.status)}
-                      <span className="text-[10px] font-black uppercase tracking-wide">{complaint.status.replace('_', ' ')}</span>
-                    </Badge>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed font-medium">
-                    {complaint.description}
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-black text-gray-900 leading-snug">{leader.name}</h3>
+                  <p className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-green-700 flex-shrink-0" />
+                    <span>{leader.office}</span>
                   </p>
-
-                  {/* SRC Feedback Section */}
-                  {complaint.moderationNotes && (
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <ShieldCheck className="w-4 h-4 text-amber-600" />
-                        <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">
-                          SRC RESPONSE
-                        </span>
-                      </div>
-                      <p className="text-xs text-amber-900 font-bold italic leading-relaxed">
-                        "{complaint.moderationNotes}"
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Tags */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={`${getPriorityColor(complaint.priority)} text-xs px-3 py-1 font-black rounded-xl border`}>
-                      {complaint.priority}
-                    </Badge>
-                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs px-3 py-1 font-bold rounded-xl">
-                      {complaint.category?.name || 'General'}
-                    </Badge>
-                  </div>
-
-                  {/* Metadata */}
-                  <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
-                        <User className="w-4 h-4 text-green-700" />
-                      </div>
-                      <span className="truncate font-bold text-gray-700">
-                        {complaint.isAnonymous ? 'Anonymous' : complaint.author?.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 justify-end">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <span className="font-semibold text-gray-600">
-                        {new Date(complaint.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {complaint.location && (
-                      <div className="flex items-center gap-2 col-span-2">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <span className="truncate font-semibold text-gray-600">{complaint.location}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Footer Stats */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="flex items-center gap-1.5 text-gray-500 font-bold">
-                        <MessageSquare className="w-4 h-4" />
-                        {complaint._count?.comments || 0}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-gray-500 font-bold">
-                        <Eye className="w-4 h-4" />
-                        {complaint.viewCount || 0}
-                      </span>
-                    </div>
-                    <div className="text-xs text-green-600 font-black opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      View Details
-                      <span className="inline-block group-hover:translate-x-1 transition-transform">→</span>
-                    </div>
-                  </div>
+                </div>
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-green-800">
+                  <span>Sa'adu Zungur University</span>
+                  <span className="text-gray-500 font-medium">Official Office</span>
                 </div>
               </Card>
             ))}
           </div>
-        ) : (
-          <Card className="p-20 text-center border-0 shadow-lg rounded-3xl bg-white/90 backdrop-blur-sm">
-            <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-2xl font-black text-gray-900 mb-3">No Complaints Found</h3>
-            <p className="text-gray-600 font-semibold mb-8 max-w-md mx-auto">
-              {searchQuery || status || priority || category 
-                ? 'Try adjusting your filters or search query to see more results' 
-                : 'No complaints have been submitted yet. Be the first to raise a concern.'}
-            </p>
-            {user?.role === 'STUDENT' && (
-              <Button
-                onClick={() => router.push('/complaints/create')}
-                className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 rounded-2xl px-8 py-4 h-auto font-bold shadow-xl shadow-green-600/30 text-white"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Submit Your First Complaint
-              </Button>
-            )}
-          </Card>
-        )}
+        </div>
 
-        {/* Load More - Enhanced */}
-        {hasNextPage && (
-          <div className="flex justify-center">
-            <Button
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-              className="px-8 py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
-              variant="secondary"
-            >
-              {isFetchingNextPage ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-2" />
-                  Loading more...
-                </>
-              ) : (
-                <>
-                  Load More Complaints
-                  <RefreshCw className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
+        {/* --- QUICK METRICS GRID --- */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <Card className="p-5 sm:p-6 border-0 shadow-md rounded-3xl bg-white flex items-center gap-4">
+            <div className="p-3.5 rounded-2xl bg-blue-50 text-blue-700 flex-shrink-0">
+              <FileText className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-gray-600 uppercase tracking-wider">
+                {isAdmin ? 'Total System Submissions' : 'Total Submissions'}
+              </p>
+              <p className="text-2xl sm:text-3xl font-black text-gray-900">{stats.total}</p>
+            </div>
+          </Card>
+
+          <Card className="p-5 sm:p-6 border-0 shadow-md rounded-3xl bg-white flex items-center gap-4">
+            <div className="p-3.5 rounded-2xl bg-amber-50 text-amber-700 flex-shrink-0">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-gray-600 uppercase tracking-wider">Pending Review</p>
+              <p className="text-2xl sm:text-3xl font-black text-gray-900">{stats.pending}</p>
+            </div>
+          </Card>
+
+          <Card className="p-5 sm:p-6 border-0 shadow-md rounded-3xl bg-white flex items-center gap-4">
+            <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-700 flex-shrink-0">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-gray-600 uppercase tracking-wider">In Progress</p>
+              <p className="text-2xl sm:text-3xl font-black text-gray-900">{stats.inProgress}</p>
+            </div>
+          </Card>
+
+          <Card className="p-5 sm:p-6 border-0 shadow-md rounded-3xl bg-white flex items-center gap-4">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-700 flex-shrink-0">
+              <CheckCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-gray-600 uppercase tracking-wider">Resolved</p>
+              <p className="text-2xl sm:text-3xl font-black text-gray-900">{stats.resolved}</p>
+            </div>
+          </Card>
+        </div>
+
+        {/* --- CONDITIONAL VIEW SECTION (STRICT ADMIN VS STUDENT SEPARATION) --- */}
+        {!isAdmin ? (
+          /* ================= STUDENT / CLASS REP VIEW ================= */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <Card className="p-6 border-0 shadow-md rounded-3xl bg-gradient-to-br from-white to-green-50/40 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-green-100 text-green-800 flex items-center justify-center font-bold">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-gray-900">How to Submit Effective Complaints</h3>
+              <p className="text-sm text-gray-700 leading-relaxed font-semibold">
+                Ensure your grievance contains precise location details, accurate categories, and clear descriptions so the SRC or Dean's office can resolve them swiftly.
+              </p>
+            </Card>
+
+            <Card className="p-6 border-0 shadow-md rounded-3xl bg-gradient-to-br from-white to-emerald-50/40 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-gray-900">Anonymous Submissions</h3>
+              <p className="text-sm text-gray-700 leading-relaxed font-semibold">
+                You can toggle anonymous mode when filing sensitive concerns. Your identity will be fully protected while still allowing unit tracking.
+              </p>
+            </Card>
+          </div>
+        ) : (
+          /* ================= ADMIN COMMAND CENTER (STRICTLY ADMIN ONLY) ================= */
+          <div className="space-y-6 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Administrative Command Center</h2>
+                <p className="text-sm text-gray-600 font-medium">Exclusive management tools for broadcasting, user control, audit logs, and verification.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* 1. Complaints & Verification */}
+              <Card 
+                onClick={() => router.push('/moderation')}
+                className="p-6 border-0 shadow-md rounded-3xl bg-white space-y-4 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-gray-900 flex items-center justify-between">
+                    <span>Verify Complaints</span>
+                    <ArrowRight className="w-4 h-4 text-emerald-700 opacity-80 group-hover:translate-x-1 transition-transform" />
+                  </h3>
+                  <p className="text-xs text-gray-600 font-semibold leading-relaxed">
+                    Review and verify authentic student reports before routing to specialized university units.
+                  </p>
+                </div>
+              </Card>
+
+              {/* 2. User Management */}
+              <Card 
+                onClick={() => router.push('/users')}
+                className="p-6 border-0 shadow-md rounded-3xl bg-white space-y-4 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-gray-900 flex items-center justify-between">
+                    <span>Users Management</span>
+                    <ArrowRight className="w-4 h-4 text-blue-700 opacity-80 group-hover:translate-x-1 transition-transform" />
+                  </h3>
+                  <p className="text-xs text-gray-600 font-semibold leading-relaxed">
+                    Manage student reps, unit staff roles, and administrative access permissions.
+                  </p>
+                </div>
+              </Card>
+
+              {/* 3. Audit Logs */}
+              <Card 
+                onClick={() => router.push('/audit-logs')}
+                className="p-6 border-0 shadow-md rounded-3xl bg-white space-y-4 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-gray-900 flex items-center justify-between">
+                    <span>Audit Logs</span>
+                    <ArrowRight className="w-4 h-4 text-purple-700 opacity-80 group-hover:translate-x-1 transition-transform" />
+                  </h3>
+                  <p className="text-xs text-gray-600 font-semibold leading-relaxed">
+                    Track system security events, database access records, and administrative actions.
+                  </p>
+                </div>
+              </Card>
+
+              {/* 4. Global Statistics */}
+              <Card 
+                onClick={() => router.push('/statistics')}
+                className="p-6 border-0 shadow-md rounded-3xl bg-white space-y-4 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-gray-900 flex items-center justify-between">
+                    <span>Global Statistics</span>
+                    <ArrowRight className="w-4 h-4 text-amber-700 opacity-80 group-hover:translate-x-1 transition-transform" />
+                  </h3>
+                  <p className="text-xs text-gray-600 font-semibold leading-relaxed">
+                    Analyze campus-wide complaint trends, resolution efficiency, and unit metrics.
+                  </p>
+                </div>
+              </Card>
+            </div>
           </div>
         )}
+
       </div>
+
+      {/* --- BROADCAST MODAL FOR ADMIN/SRC --- */}
+      {showBroadcastModal && isAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-scale-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <Megaphone className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-black text-gray-900">Broadcast Institutional Alert</h3>
+              </div>
+              <button 
+                onClick={() => setShowBroadcastModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-500 hover:text-gray-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendBroadcast} className="space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-700 mb-1.5">Broadcast Title</label>
+                <Input
+                  placeholder="e.g. Urgent Campus Update"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  required
+                  className="rounded-2xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-700 mb-1.5">Message Content</label>
+                <textarea
+                  rows={4}
+                  placeholder="Type the announcement message to broadcast to all online users..."
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  required
+                  className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 outline-none transition-all text-sm font-semibold resize-none text-gray-900 placeholder:text-gray-400"
+                />
+              </div>
+
+              {broadcastFeedback && (
+                <div className={`p-4 rounded-2xl text-xs font-bold ${broadcastFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900'}`}>
+                  {broadcastFeedback.text}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowBroadcastModal(false)}
+                  className="rounded-2xl px-5 py-3 font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmittingBroadcast}
+                  className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl px-6 py-3 font-bold shadow-lg shadow-orange-600/30 flex items-center gap-2 cursor-pointer"
+                >
+                  {isSubmittingBroadcast ? 'Broadcasting...' : (
+                    <>
+                      <Send className="w-4 h-4 text-white" />
+                      <span>Send Live Broadcast</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

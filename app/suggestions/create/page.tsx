@@ -21,13 +21,14 @@ export default function CreateSuggestion() {
   
   const MIN_CHARS = 50;
   
+// 2. SUGGESTION MUTATION
   const mutation = useMutation({
     mutationFn: createSuggestion,
     onSuccess: () => {
       // 1. Trigger the visual celebration
       triggerSuccessConfetti();
       
-      // 2. Show a modern toast
+      // 2. Show a modern toast indicating pending review status
       toast.custom((t) => (
         <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
           <div className="flex-1 w-0 p-4">
@@ -38,14 +39,14 @@ export default function CreateSuggestion() {
                 </div>
               </div>
               <div className="ml-3 flex-1">
-                <p className="text-sm font-bold text-gray-900">Great Idea!</p>
-                <p className="mt-1 text-sm text-gray-500">Your suggestion is now live for the community to upvote.</p>
+                <p className="text-sm font-bold text-gray-900">Suggestion Submitted!</p>
+                <p className="mt-1 text-sm text-gray-500">Your suggestion has been submitted and is pending review.</p>
               </div>
             </div>
           </div>
         </div>
       ));
-  
+ 
       // 3. Wait slightly for the student to see the success before redirecting
       setTimeout(() => router.push('/suggestions'), 2000);
     },
@@ -57,7 +58,6 @@ export default function CreateSuggestion() {
   
   const progress = Math.min((formData.description.length / MIN_CHARS) * 100, 100);
   const isValid = formData.title.trim().length > 0 && formData.description.length >= MIN_CHARS;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-yellow-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">

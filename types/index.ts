@@ -1,0 +1,9 @@
+export type Role = 
+  | 'SUPER_ADMIN'
+  | 'SRC_MEMBER'
+  | 'ICT_UNIT'
+  | 'SECURITY_UNIT'
+  | 'HOSTEL_MANAGEMENT_UNIT'
+  | 'SENATE_UNIT'
+  | 'STUDENT'
+  | 'CLASS_REP';

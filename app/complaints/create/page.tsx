@@ -15,7 +15,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 // UI Components & Icons
 import {
   FileText, AlertCircle, MapPin, Tag, Lock, Upload, X,
-  CheckCircle, ArrowLeft, Sparkles, Shield, Info, Lightbulb
+  CheckCircle, ArrowLeft, Sparkles, Shield, Info
 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -30,7 +30,7 @@ const schema = z.object({
   tags: z.string().optional(),
 });
 
-type FormData = z.infer<typeof schema>;
+type FormValues = z.infer<typeof schema>;
 
 export default function CreateComplaintPage() {
   const router = useRouter();
@@ -38,10 +38,10 @@ export default function CreateComplaintPage() {
 
   // 1. All States
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [duplicates, setDuplicates] = useState<any[]>([]); // Added missing state
+  const [duplicates, setDuplicates] = useState<any[]>([]);
 
   // 2. Form Hook
-  const { register, handleSubmit, control, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       priority: 'MEDIUM',
@@ -82,36 +82,53 @@ export default function CreateComplaintPage() {
   }, [debouncedTitle]);
 
   // 6. Mutations
+ // 1. COMPLAINT MUTATION
   const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const formattedData = {
-        ...data,
-        tags: data.tags
-          ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== "")
-          : []
+    mutationFn: async (data: FormValues) => {
+      const formattedAttachments = uploadedFiles.map((file) => ({
+        fileName: file.name,
+        fileUrl: URL.createObjectURL(file), // temporary client URL or replace with actual uploaded URL
+        fileType: file.type || 'application/octet-stream',
+        fileSize: file.size,
+      }));
+
+      const payload = {
+        title: data.title,
+        description: data.description,
+        categoryId: data.categoryId,
+        priority: data.priority,
+        location: data.location || undefined,
+        isAnonymous: Boolean(data.isAnonymous),
+        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        attachments: formattedAttachments,
       };
-      return createComplaint(formattedData);
+
+      return createComplaint(payload);
     },
     onSuccess: () => {
-      // ✅ Refresh queries here so Sidebar updates after submission
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+      queryClient.invalidateQueries({ queryKey: ['complaints'] });
       
       toast.success('Complaint Submitted!', {
-        description: 'Your complaint has been successfully submitted and is being reviewed.',
+        description: 'Your complaint has been successfully submitted and is pending review by an admin.',
       });
+
+      // Safely navigate to the complaints dashboard
       router.push('/complaints');
     },
     onError: (error: any) => {
       const serverMessage = error.response?.data?.message;
       toast.error('Submission Failed', {
-        description: serverMessage || 'Failed to create complaint. Please try again.',
+        description: Array.isArray(serverMessage) 
+          ? serverMessage.join(', ') 
+          : serverMessage || 'Failed to create complaint. Please check your inputs.',
       });
     },
   });
 
   // 7. Handlers
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: FormValues) => {
     createMutation.mutate(data);
   };
 
@@ -421,6 +438,31 @@ export default function CreateComplaintPage() {
 
           {/* Submit Actions */}
           <Card className="p-6 border-0 shadow-lg">
+            {duplicates.length > 0 && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 text-blue-800 font-bold mb-2 text-sm">
+                  <Info className="w-4 h-4" /> Similar existing reports found:
+                </div>
+                <div className="space-y-2">
+                  {duplicates.map((item: any) => (
+                    <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-blue-100 shadow-sm">
+                      <span className="text-sm font-medium text-gray-700">{item.title}</span>
+                      <button 
+                        type="button"
+                        onClick={() => router.push(`/complaints/${item.id}`)}
+                        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        View & Join
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-blue-600 mt-3">
+                  If your issue is the same as above, please view and comment there instead of creating a duplicate.
+                </p>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 type="button"
@@ -430,30 +472,6 @@ export default function CreateComplaintPage() {
               >
                 Cancel
               </Button>
-              {duplicates.length > 0 && (
-  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl animate-in fade-in slide-in-from-top-2">
-    <div className="flex items-center gap-2 text-blue-800 font-bold mb-2 text-sm">
-      <Info className="w-4 h-4" /> Similar existing reports found:
-    </div>
-    <div className="space-y-2">
-      {duplicates.map((item: any) => (
-        <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-blue-100 shadow-sm">
-          <span className="text-sm font-medium text-gray-700">{item.title}</span>
-          <button 
-            type="button"
-            onClick={() => router.push(`/complaints/${item.id}`)}
-            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            View & Join
-          </button>
-        </div>
-      ))}
-    </div>
-    <p className="text-[10px] text-blue-600 mt-3">
-      If your issue is the same as above, please view and comment there instead of creating a duplicate.
-    </p>
-  </div>
-)}
               <Button
                 type="submit"
                 disabled={createMutation.isPending}
