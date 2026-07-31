@@ -137,6 +137,7 @@ export default function DashboardPage() {
       title: 'Vice-Chancellor',
       name: 'Prof. [VC Name Placeholder]',
       office: 'Office of the Vice-Chancellor',
+      imagePath: '/vc.jpg',
       imagePlaceholder: 'VC',
       badgeColor: 'bg-purple-100 text-purple-800 border-purple-200'
     },
@@ -144,6 +145,7 @@ export default function DashboardPage() {
       title: 'Dean of Student Affairs',
       name: 'Dr. [Dean Name Placeholder]',
       office: 'Student Affairs Division',
+      imagePath: '/dean.jpg',
       imagePlaceholder: 'DSA',
       badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
     },
@@ -151,6 +153,7 @@ export default function DashboardPage() {
       title: 'SRC President',
       name: 'Comrade [SRC President Placeholder]',
       office: 'Student Representative Council',
+      imagePath: '/src.jpg',
       imagePlaceholder: 'SRC',
       badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
     }
@@ -241,7 +244,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* --- UNIVERSITY LEADERSHIP & DIRECTORY (FIXED VC TEXT & CONTRAST) --- */}
+        {/* --- UNIVERSITY LEADERSHIP & DIRECTORY --- */}
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
@@ -254,8 +257,19 @@ export default function DashboardPage() {
             {leadershipTeam.map((leader, idx) => (
               <Card key={idx} className="p-6 border-0 shadow-md rounded-3xl bg-white space-y-4 hover:shadow-xl transition-all group">
                 <div className="flex items-center justify-between">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-700 to-green-900 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-green-900/20 group-hover:scale-105 transition-transform">
-                    {leader.imagePlaceholder}
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-green-700 to-green-900 shadow-lg shadow-green-900/20 group-hover:scale-105 transition-transform flex items-center justify-center">
+                    <img 
+                      src={leader.imagePath} 
+                      alt={leader.title} 
+                      className="w-full h-full object-cover"
+                      onError={(e: any) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <span className="text-white font-black text-2xl hidden items-center justify-center w-full h-full">
+                      {leader.imagePlaceholder}
+                    </span>
                   </div>
                   <Badge className={`${leader.badgeColor} border font-bold text-xs px-3 py-1 rounded-full`}>
                     {leader.title}
