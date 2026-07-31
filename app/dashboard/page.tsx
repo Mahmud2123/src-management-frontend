@@ -135,15 +135,15 @@ export default function DashboardPage() {
   const leadershipTeam = [
     {
       title: 'Vice-Chancellor',
-      name: 'Prof. [VC Name Placeholder]',
+      name: 'Prof. Fatimah Tahir FNSM',
       office: 'Office of the Vice-Chancellor',
       imagePath: '/vc.jpg',
       imagePlaceholder: 'VC',
-      badgeColor: 'bg-purple-100 text-purple-800 border-purple-200'
+      badgeColor: 'bg-purple-600 text-white border-purple-700'
     },
     {
       title: 'Dean of Student Affairs',
-      name: 'Dr. [Dean Name Placeholder]',
+      name: 'Proff. Abdussalam Murtada Alhaqiqi ',
       office: 'Student Affairs Division',
       imagePath: '/dean.jpg',
       imagePlaceholder: 'DSA',
@@ -151,7 +151,7 @@ export default function DashboardPage() {
     },
     {
       title: 'SRC President',
-      name: 'Comrade [SRC President Placeholder]',
+      name: 'Comrade Ilyasu Umar Adamu',
       office: 'Student Representative Council',
       imagePath: '/src.jpg',
       imagePlaceholder: 'SRC',
