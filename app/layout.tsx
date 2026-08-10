@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: {
     default: "SRC Portal | Sa'adu Zungur University",
     template: "%s | SRC Portal - SAZU",
@@ -74,6 +74,18 @@ export const metadata: Metadata = {
     description: 'Official Student Representative Council Portal for Sa\'adu Zungur University, Bauchi State, Nigeria.',
     images: ['/og-image.png'],
   },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: ['/favicon.ico'],
+  },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -84,8 +96,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
-        {/* Favicon */}
+        {/* Favicon - SAZU Logo */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
         
@@ -99,6 +113,7 @@ export default function RootLayout({
               name: "Sa'adu Zungur University",
               alternateName: 'SAZU',
               url: process.env.NEXT_PUBLIC_APP_URL || 'https://src.sazu.edu.ng',
+              logo: 'https://src.sazu.edu.ng/logo.png',
               address: {
                 '@type': 'PostalAddress',
                 streetAddress: 'PMB 0698, Bauchi',
