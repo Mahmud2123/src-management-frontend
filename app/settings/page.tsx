@@ -15,7 +15,7 @@ import LoadingState from '@/components/LoadingState';
 import { fetchSystemSettings, updateSystemSettings } from '@/lib/api';
 
 export default function SettingsPage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const hasToasted = useRef(false);

@@ -1,3 +1,4 @@
+// components/Sidebar.tsx
 'use client';
 
 import { useEffect, useState, useTransition, Suspense } from 'react';
@@ -8,7 +9,8 @@ import {
   Home, FileText, Users, Bell, Settings, 
   LogOut, Shield, Plus, Menu, X, ChevronRight, Activity,
   UserCircle, TrendingUp, GraduationCap, User, Lightbulb, ShieldCheck,
-  Building2, Server, KeyRound, Landmark, PanelLeftClose, PanelLeftOpen, Wrench
+  Building2, Server, KeyRound, Landmark, PanelLeftClose, PanelLeftOpen, Wrench,
+  Megaphone, Users as UsersIcon, Crown
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { Role } from '@/types';
@@ -36,7 +38,8 @@ function SidebarNavList({
     : 0;
 
   const role = (user?.role as Role) || 'STUDENT';
-
+  
+  // ✅ STRICT ROLE DEFINITIONS
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isSrcMember = role === 'SRC_MEMBER';
   const isSRC = isSuperAdmin || isSrcMember;
@@ -50,19 +53,30 @@ function SidebarNavList({
     'SENATE_UNIT'
   ].includes(role);
 
+  // ✅ NAVIGATION WITH STRICT ROLE-BASED VISIBILITY
   const navigation = [
+    // Public / All Users
     { name: 'Dashboard', icon: Home, path: '/dashboard', show: true },
-    { name: 'All Complaints', icon: FileText, path: '/complaints?filter=ALL', show: isSRC || isUnitStaff },
+    { name: 'My Profile', icon: User, path: '/profile', show: true },
+    { name: 'Announcements', icon: Megaphone, path: '/announcements', show: true },
+    { name: 'Suggestion Box', icon: Lightbulb, path: '/suggestions', show: true },
+    { name: 'Notifications', icon: Bell, path: '/notifications', show: true, badge: unreadCount },
+    
+    // Students & Class Reps
     { name: 'My Complaints', icon: UserCircle, path: '/complaints?filter=MINE', show: isPersonalUser },
     { name: 'Submit Issue', icon: Plus, path: '/complaints/create', show: isPersonalUser, highlight: true },
-    { name: 'Suggestion Box', icon: Lightbulb, path: '/suggestions', show: true },
-    { name: 'Verify Complaints', icon: ShieldCheck, path: '/moderation', show: isSRC },
     { name: 'Class Portal', icon: GraduationCap, path: '/class-rep', show: isClassRep },
-    { name: 'Notifications', icon: Bell, path: '/notifications', show: true, badge: unreadCount },
+    
+    // SRC Members & Super Admins
+    { name: 'All Complaints', icon: FileText, path: '/complaints?filter=ALL', show: isSRC || isUnitStaff },
+    { name: 'Verify Complaints', icon: ShieldCheck, path: '/moderation', show: isSRC },
     { name: 'Global Statistics', icon: TrendingUp, path: '/statistics', show: isSRC },
-    { name: 'Users Management', icon: Users, path: '/users', show: isSRC },
-    { name: 'Audit Logs', icon: Activity, path: '/audit-logs', show: isSRC },
-    { name: 'My Profile', icon: User, path: '/profile', show: true },
+    { name: 'Executive Council', icon: Crown, path: '/excos', show: isSRC },
+    
+    // 🔒 SUPER ADMIN ONLY - Strictly restricted
+    { name: 'Users Management', icon: Users, path: '/users', show: isSuperAdmin },
+    { name: 'Audit Logs', icon: Activity, path: '/audit-logs', show: isSuperAdmin },
+    { name: 'Settings', icon: Settings, path: '/settings', show: isSuperAdmin },
   ];
 
   const visibleNav = navigation.filter((item) => item.show);
@@ -152,6 +166,7 @@ export default function Sidebar() {
   }, []);
 
   const userRole = (user?.role as Role) || 'STUDENT';
+  const isSuperAdmin = userRole === 'SUPER_ADMIN';
   const isAdminUser = ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(userRole);
 
   const { data: settings } = useQuery({
@@ -214,7 +229,8 @@ export default function Sidebar() {
   const roleConfig = getRoleConfig(userRole);
   const RoleIcon = roleConfig.icon;
 
-  const isSettingsAllowed = ['SUPER_ADMIN', 'SRC_MEMBER'].includes(userRole);
+  // ✅ Settings only available to SUPER_ADMIN now (removed SRC_MEMBER)
+  const isSettingsAllowed = isSuperAdmin;
 
   const SidebarContent = ({ collapsed = false }: { collapsed?: boolean }) => (
     <div className="flex flex-col h-full bg-white border-r border-gray-200/80 select-none transition-all duration-300">
@@ -294,6 +310,7 @@ export default function Sidebar() {
 
       {/* Bottom Actions */}
       <div className="p-3 border-t border-gray-100 space-y-1">
+        {/* ✅ Settings only for SUPER_ADMIN */}
         {isSettingsAllowed && (
           <button
             onClick={() => handleNavigation('/settings')}

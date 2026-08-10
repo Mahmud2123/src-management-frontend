@@ -1,3 +1,4 @@
+// app/complaints/[id]/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -13,8 +14,50 @@ import {
   ArrowLeft, MapPin, Calendar, User, Eye, AlertCircle, Send,
   Paperclip, Download, MessageSquare, Lock, CheckCircle, Clock,
   TrendingUp, XCircle, Edit, Save, X, Upload, FileText, Image as ImageIcon,
-  UserCheck, ShieldAlert
+  UserCheck, ShieldAlert, Mail, Phone, Maximize2
 } from 'lucide-react';
+
+// Helper function to format file size
+const formatFileSize = (bytes: number): string => {
+  if (!bytes || isNaN(bytes) || bytes === 0) return '0 KB';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
+
+// ✅ Image Preview Modal Component
+function ImagePreviewModal({ src, alt, title, onClose }: { src: string; alt: string; title?: string; onClose: () => void }) {
+  return (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="relative max-w-5xl max-h-[90vh] w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors p-2"
+        >
+          <X className="w-8 h-8" />
+        </button>
+        <div className="bg-black/50 rounded-2xl overflow-hidden">
+          <img
+            src={src}
+            alt={alt}
+            className="w-full h-auto max-h-[80vh] object-contain"
+          />
+        </div>
+        {title && (
+          <div className="mt-4 text-white text-center">
+            <h3 className="text-xl font-bold">{title}</h3>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ComplaintDetailPage() {
   const params = useParams();
@@ -23,6 +66,9 @@ export default function ComplaintDetailPage() {
   const queryClient = useQueryClient();
 
   const complaintId = params.id as string;
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isStudent = user?.role === 'STUDENT' || user?.role === 'CLASS_REP';
+  const isStaff = !isStudent;
 
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
@@ -32,22 +78,22 @@ export default function ComplaintDetailPage() {
   const [editingAssignee, setEditingAssignee] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string; title?: string } | null>(null);
 
   // Fetch Complaint Details
-  const { data: complaint, isLoading } = useQuery({
+  const { data: complaint, isLoading, refetch } = useQuery({
     queryKey: ['complaint', complaintId],
     queryFn: () => fetchComplaintById(complaintId),
   });
 
   // Fetch SRC/Admin Members for Assignment
-  const canManage = user?.role !== 'STUDENT';
+  const canManage = !isStudent;
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
     queryFn: () => fetchMembers ? fetchMembers() : Promise.resolve([]),
     enabled: canManage,
   });
 
-  
   // Mutation: Add Comment
   const addCommentMutation = useMutation({
     mutationFn: ({ content, isInternal }: { content: string; isInternal: boolean }) =>
@@ -57,6 +103,7 @@ export default function ComplaintDetailPage() {
       setNewComment('');
       setIsInternal(false);
       queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
+      refetch();
     },
     onError: (error: any) => {
       toast.error('Failed to add comment', {
@@ -75,6 +122,7 @@ export default function ComplaintDetailPage() {
       setResolutionNotes('');
       queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
       queryClient.invalidateQueries({ queryKey: ['complaints'] });
+      refetch();
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || error.customMessage || "Permission Denied";
@@ -93,6 +141,7 @@ export default function ComplaintDetailPage() {
       setEditingAssignee(false);
       queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
       queryClient.invalidateQueries({ queryKey: ['complaints'] });
+      refetch();
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || error.customMessage || "Assignment Failed";
@@ -111,6 +160,7 @@ export default function ComplaintDetailPage() {
       await uploadFile(file, complaintId);
       toast.success('File uploaded successfully');
       queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
+      refetch();
     } catch (error: any) {
       toast.error('Failed to upload file', {
         description: error.customMessage || error.message,
@@ -146,6 +196,12 @@ export default function ComplaintDetailPage() {
       return;
     }
     assignMutation.mutate(selectedAssignee);
+  };
+
+  const handleRefresh = () => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
+    toast.success('Refreshed');
   };
 
   const getStatusIcon = (status: string) => {
@@ -202,6 +258,37 @@ export default function ComplaintDetailPage() {
     );
   }
 
+  // Determine if user can see author details (only Super Admin)
+  const canSeeAuthorDetails = isSuperAdmin;
+  const authorName = complaint.isAnonymous && !canSeeAuthorDetails ? 'Anonymous Student' : complaint.author?.name || 'Unknown User';
+  const authorEmail = complaint.isAnonymous && !canSeeAuthorDetails ? null : complaint.author?.email;
+  const authorStudentId = complaint.isAnonymous && !canSeeAuthorDetails ? null : complaint.author?.studentId;
+
+  // Filter comments based on user role
+  const visibleComments = complaint.comments?.filter((comment: any) => {
+    if (comment.isInternal && isStudent) {
+      return false;
+    }
+    return true;
+  }) || [];
+
+  // Students should not see assignedTo information
+  const showAssignedTo = !isStudent;
+
+  // Get image URL with base URL
+  const getImageUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    if (url.startsWith('/uploads/')) {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      return `${baseUrl}${url}`;
+    }
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+    return `${baseUrl}/uploads/${url}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -214,10 +301,16 @@ export default function ComplaintDetailPage() {
             </Button>
             <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate flex-1">{complaint.title}</h1>
           </div>
-          <Badge className={`${getStatusColor(complaint.status)} flex items-center gap-1.5 px-3.5 py-2 border text-sm font-semibold shrink-0 self-start sm:self-auto`}>
-            {getStatusIcon(complaint.status)}
-            {complaint.status.replace('_', ' ')}
-          </Badge>
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+            <Button variant="secondary" onClick={handleRefresh} className="flex items-center gap-1 border border-gray-200 text-sm">
+              <Clock className="w-4 h-4" />
+              Refresh
+            </Button>
+            <Badge className={`${getStatusColor(complaint.status)} flex items-center gap-1.5 px-3.5 py-2 border text-sm font-semibold`}>
+              {getStatusIcon(complaint.status)}
+              {complaint.status.replace('_', ' ')}
+            </Badge>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -239,6 +332,21 @@ export default function ComplaintDetailPage() {
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{complaint.description}</p>
               </div>
 
+              {canSeeAuthorDetails && complaint.author && (
+                <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
+                  <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <User className="w-4 h-4 text-green-600" />
+                    Author Details (Super Admin Only)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <p className="text-gray-700"><strong>Name:</strong> {complaint.author.name}</p>
+                    {complaint.author.email && <p className="text-gray-700"><strong>Email:</strong> {complaint.author.email}</p>}
+                    {complaint.author.studentId && <p className="text-gray-700"><strong>Student ID:</strong> {complaint.author.studentId}</p>}
+                    {complaint.author.department?.name && <p className="text-gray-700"><strong>Department:</strong> {complaint.author.department.name}</p>}
+                  </div>
+                </div>
+              )}
+
               {Array.isArray(complaint.tags) && complaint.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-6 pt-6 border-t border-gray-100">
                   {complaint.tags.map((tag: string, idx: number) => (
@@ -250,7 +358,7 @@ export default function ComplaintDetailPage() {
               )}
             </Card>
 
-            {/* Attachments */}
+            {/* ✅ Enhanced Attachments Display with Preview */}
             {complaint.attachments && complaint.attachments.length > 0 && (
               <Card className="p-4 sm:p-6 md:p-8 border-0 shadow-md bg-white">
                 <div className="flex items-center justify-between mb-6">
@@ -260,29 +368,56 @@ export default function ComplaintDetailPage() {
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {complaint.attachments.map((attachment: any) => (
-                    <div key={attachment.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-green-300 transition-colors group">
-                      <div className="p-3 bg-green-100 rounded-lg shrink-0">
-                        {attachment.type?.includes('image') ? (
-                          <ImageIcon className="w-5 h-5 text-green-700" />
+                  {complaint.attachments.map((attachment: any) => {
+                    const isImage = attachment.fileType?.includes('image') || 
+                                   attachment.fileType?.includes('jpeg') || 
+                                   attachment.fileType?.includes('png') ||
+                                   attachment.fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                    const fileUrl = attachment.fileUrl || attachment.url;
+                    const fullUrl = getImageUrl(fileUrl);
+
+                    return (
+                      <div key={attachment.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-green-300 transition-colors group">
+                        {isImage ? (
+                          <div 
+                            className="relative w-16 h-16 rounded-lg overflow-hidden cursor-pointer flex-shrink-0 group/image"
+                            onClick={() => setPreviewImage({ 
+                              src: fullUrl, 
+                              alt: attachment.fileName,
+                              title: attachment.fileName 
+                            })}
+                          >
+                            <img
+                              src={fullUrl}
+                              alt={attachment.fileName}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/40 transition-all duration-300 flex items-center justify-center">
+                              <Maximize2 className="w-4 h-4 text-white opacity-0 group-hover/image:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
                         ) : (
-                          <FileText className="w-5 h-5 text-green-700" />
+                          <div className="p-3 bg-green-100 rounded-lg shrink-0">
+                            <FileText className="w-5 h-5 text-green-700" />
+                          </div>
                         )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate text-sm">{attachment.fileName}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(attachment.fileSize)}
+                          </p>
+                        </div>
+                        <a
+                          href={fullUrl}
+                          download
+                          className="p-2 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0"
+                          aria-label={`Download ${attachment.fileName}`}
+                        >
+                          <Download className="w-4 h-4 text-gray-600 hover:text-green-600" />
+                        </a>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate text-sm">{attachment.filename}</p>
-                        <p className="text-xs text-gray-500">{(attachment.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <a
-                        href={attachment.url}
-                        download
-                        className="p-2 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0"
-                        aria-label={`Download ${attachment.filename}`}
-                      >
-                        <Download className="w-4 h-4 text-gray-600 hover:text-green-600" />
-                      </a>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </Card>
             )}
@@ -291,47 +426,53 @@ export default function ComplaintDetailPage() {
             <Card className="p-4 sm:p-6 md:p-8 border-0 shadow-md bg-white">
               <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-green-600" />
-                Comments ({complaint.comments?.length || 0})
+                Comments ({visibleComments.length})
               </h3>
 
               <div className="space-y-4 mb-6 max-h-[500px] overflow-y-auto pr-1">
-                {complaint.comments && complaint.comments.length > 0 ? (
-                  complaint.comments.map((comment: any) => (
-                    <div
-                      key={comment.id}
-                      className={`p-4 rounded-xl transition-all ${
-                        comment.isInternal
-                          ? 'bg-amber-50/70 border border-amber-200'
-                          : 'bg-gray-50 border border-gray-100'
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                        <div className="w-9 h-9 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
-                          {comment.author?.name?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-900 text-sm">{comment.author?.name || 'Unknown'}</span>
-                              <Badge variant="secondary" className="text-[11px] px-2 py-0.5 bg-gray-200 text-gray-700">
-                                {comment.author?.role?.replace('_', ' ') || 'User'}
-                              </Badge>
-                              {comment.isInternal && (
-                                <Badge className="bg-amber-100 text-amber-800 border border-amber-300 text-[11px] px-2 py-0.5 flex items-center gap-1 font-medium">
-                                  <Lock className="w-3 h-3" />
-                                  Internal
-                                </Badge>
-                              )}
-                            </div>
-                            <span className="text-xs text-gray-400">
-                              {new Date(comment.createdAt).toLocaleString()}
-                            </span>
+                {visibleComments.length > 0 ? (
+                  visibleComments.map((comment: any) => {
+                    const isInternalComment = comment.isInternal === true;
+                    
+                    return (
+                      <div
+                        key={comment.id}
+                        className={`p-4 rounded-xl transition-all ${
+                          isInternalComment
+                            ? 'bg-amber-50/70 border border-amber-200'
+                            : 'bg-gray-50 border border-gray-100'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                          <div className="w-9 h-9 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+                            {comment.author?.name?.charAt(0).toUpperCase() || 'U'}
                           </div>
-                          <p className="text-gray-700 text-sm leading-relaxed break-words">{comment.content}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-900 text-sm">
+                                  {comment.author?.name || 'Unknown'}
+                                </span>
+                                <Badge variant="secondary" className="text-[11px] px-2 py-0.5 bg-gray-200 text-gray-700">
+                                  {comment.author?.role?.replace('_', ' ') || 'User'}
+                                </Badge>
+                                {isInternalComment && (
+                                  <Badge className="bg-amber-100 text-amber-800 border border-amber-300 text-[11px] px-2 py-0.5 flex items-center gap-1 font-medium">
+                                    <Lock className="w-3 h-3" />
+                                    Internal
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-400">
+                                {new Date(comment.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-gray-700 text-sm leading-relaxed break-words">{comment.content}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                     <MessageSquare className="w-8 h-8 text-gray-300 mx-auto mb-2" />
@@ -345,25 +486,27 @@ export default function ComplaintDetailPage() {
                 <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Type your response here..."
+                  placeholder={isStudent ? "Type your response here..." : "Type your response here... (check Internal Note for staff-only comments)"}
                   rows={4}
                   aria-label="Add comment text"
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none transition-all resize-none text-sm text-gray-900 placeholder:text-gray-400"
                 />
 
-                {canManage && (
+                {!isStudent && (
                   <label className="flex items-start sm:items-center gap-3 p-3.5 bg-amber-50/50 border border-amber-200/80 rounded-xl cursor-pointer hover:bg-amber-50 transition-colors">
                     <input
                       type="checkbox"
                       checked={isInternal}
                       onChange={(e) => setIsInternal(e.target.checked)}
-                      className="mt-0.5 sm:mt-0 w-4 h-4 text-green-600 rounded focus:ring-green-500 shrink-0"
+                      className="mt-0.5 sm:mt-0 w-4 h-4 text-amber-600 rounded focus:ring-amber-500 shrink-0"
                     />
                     <div className="flex-1 text-xs sm:text-sm">
                       <span className="font-semibold text-gray-900 flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5 text-amber-700" /> Internal Note
                       </span>
-                      <span className="text-gray-500 block sm:inline sm:ml-1">(Only visible to staff and system administrators)</span>
+                      <span className="text-gray-500 block sm:inline sm:ml-1">
+                        (Only visible to staff and system administrators)
+                      </span>
                     </div>
                   </label>
                 )}
@@ -404,19 +547,21 @@ export default function ComplaintDetailPage() {
                   </Badge>
                 </div>
 
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Assigned To</p>
-                  {complaint.assignedTo ? (
-                    <p className="font-semibold text-gray-900 flex items-center gap-2">
-                      <UserCheck className="w-4 h-4 text-green-600 shrink-0" />
-                      {complaint.assignedTo.name}
-                    </p>
-                  ) : (
-                    <p className="text-gray-400 italic flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> Unassigned
-                    </p>
-                  )}
-                </div>
+                {showAssignedTo && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Assigned To</p>
+                    {complaint.assignedTo ? (
+                      <p className="font-semibold text-gray-900 flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-green-600 shrink-0" />
+                        {complaint.assignedTo.name}
+                      </p>
+                    ) : (
+                      <p className="text-gray-400 italic flex items-center gap-1.5">
+                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> Unassigned
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {complaint.location && (
                   <div>
@@ -432,8 +577,20 @@ export default function ComplaintDetailPage() {
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Submitted By</p>
                   <p className="font-medium text-gray-800 flex items-center gap-2">
                     <User className="w-4 h-4 text-gray-400 shrink-0" />
-                    {complaint.isAnonymous ? 'Anonymous' : (complaint.author?.name || 'Student')}
+                    {authorName}
                   </p>
+                  {canSeeAuthorDetails && authorEmail && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                      <Mail className="w-3 h-3" />
+                      {authorEmail}
+                    </p>
+                  )}
+                  {canSeeAuthorDetails && authorStudentId && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      ID: {authorStudentId}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -472,7 +629,7 @@ export default function ComplaintDetailPage() {
               </div>
             </Card>
 
-            {/* Admin Management Panel */}
+            {/* Admin Management Panel - Only for Staff */}
             {canManage && (
               <Card className="p-4 sm:p-6 border-0 shadow-md bg-white">
                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-base">
@@ -639,7 +796,11 @@ export default function ComplaintDetailPage() {
                           {change.fromStatus} → {change.toStatus}
                         </p>
                         <p className="text-[11px] text-gray-500">
-                          by <span className="text-gray-700 font-medium">{change.changedBy || 'Admin'}</span> • {new Date(change.changedAt).toLocaleString()}
+                          {isStudent ? (
+                            `Updated on ${new Date(change.changedAt).toLocaleString()}`
+                          ) : (
+                            <>by <span className="text-gray-700 font-medium">{change.changedBy || 'Admin'}</span> • {new Date(change.changedAt).toLocaleString()}</>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -650,6 +811,16 @@ export default function ComplaintDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ✅ Image Preview Modal */}
+      {previewImage && (
+        <ImagePreviewModal
+          src={previewImage.src}
+          alt={previewImage.alt}
+          title={previewImage.title}
+          onClose={() => setPreviewImage(null)}
+        />
+      )}
     </div>
   );
 }

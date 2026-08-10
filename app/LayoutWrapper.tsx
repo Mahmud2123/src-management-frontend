@@ -1,20 +1,39 @@
+// app/LayoutWrapper.tsx - Update the logic
 'use client';
 
 import { useAuth } from '@/providers/auth';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { Shield } from 'lucide-react';
+import { UnauthorizedAccess } from '@/components/UnauthorizedAccess';
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
   const pathname = usePathname() ?? '';
 
-  const isLandingPage = pathname === '/';
   const isAuthRoute = pathname.startsWith('/auth');
-  const isPublicRoute = isLandingPage || isAuthRoute;
+  const isLoginPage = pathname === '/login';
+  const isLandingPage = pathname === '/';
+  
+  // Only show sidebar for authenticated users on dashboard routes
+  const isDashboardRoute = pathname.startsWith('/dashboard') || 
+                          pathname.startsWith('/complaints') || 
+                          pathname.startsWith('/profile') ||
+                          pathname.startsWith('/announcements') ||
+                          pathname.startsWith('/users') ||
+                          pathname.startsWith('/settings') ||
+                          pathname.startsWith('/statistics') ||
+                          pathname.startsWith('/audit-logs') ||
+                          pathname.startsWith('/moderation') ||
+                          pathname.startsWith('/suggestions') ||
+                          pathname.startsWith('/excos') ||
+                          pathname.startsWith('/class-rep') ||
+                          pathname.startsWith('/notifications');
 
-  // Global Loading State (Prevents layout flashing during session check)
-  if (isLoading) {
+  const shouldShowSidebar = user && !isAuthRoute && !isLoginPage && !isLandingPage;
+
+  // Global Loading State
+  if (loading) {
     return (
       <div 
         role="status" 
@@ -29,26 +48,34 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
           <p className="text-sm font-medium tracking-wide text-green-100/80">
             Initializing SRC Portal...
           </p>
+          <p className="text-xs text-green-200/50 mt-2">
+            Sa'adu Zungur University, Bauchi, Nigeria
+          </p>
         </div>
       </div>
     );
   }
 
-  // Public/Unauthenticated View
-  if (isPublicRoute || !user) {
-    return <div className="min-h-screen w-full">{children}</div>;
+  // Check for deactivated users
+  if (user && !user.isActive) {
+    return <UnauthorizedAccess type="forbidden" message="Your account has been deactivated. Please contact support." />;
   }
 
-  // Authenticated Dashboard Layout
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
-      <Sidebar />
-      <main 
-        id="main-content" 
-        className="flex-1 h-full overflow-y-auto overflow-x-hidden relative bg-white focus:outline-none"
-      >
-        {children}
-      </main>
-    </div>
-  );
+  // Render with sidebar for authenticated users on dashboard routes
+  if (shouldShowSidebar) {
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
+        <Sidebar />
+        <main 
+          id="main-content" 
+          className="flex-1 h-full overflow-y-auto overflow-x-hidden relative bg-white focus:outline-none"
+        >
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // Public/Unauthenticated view (landing page, login, etc.)
+  return <div className="min-h-screen w-full">{children}</div>;
 }

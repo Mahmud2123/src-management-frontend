@@ -1,42 +1,53 @@
+// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+// Public routes
+const publicRoutes = [
+  '/',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-reset',
+  '/maintenance',
+  '/unauthorized',
+];
 
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/static') ||
-    pathname === '/maintenance' ||
-    pathname.includes('.')
-  ) {
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Get token from cookies
+  const token = request.cookies.get('src_token')?.value;
+
+  // Check if path is public
+  const isPublicRoute = publicRoutes.some(route => {
+    if (route.includes(':')) {
+      const pattern = route.replace(/:path\*/, '.*');
+      return new RegExp(`^${pattern}$`).test(pathname);
+    }
+    return pathname === route || pathname.startsWith(route + '/');
+  });
+
+  // If public route, allow access
+  if (isPublicRoute) {
     return NextResponse.next();
   }
 
-  try {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-    const res = await fetch(`${backendUrl}/settings`, {
-      cache: 'no-store',
-    });
-
-    if (res.ok) {
-      const settings = await res.json();
-      
-      // If maintenance mode is active, you can optionally force a redirect 
-      // for any page hits, and let client-side API requests handle role exemptions.
-      if (settings.maintenanceMode && pathname !== '/maintenance') {
-        // Let middleware forward; the client-side queries/guards 
-        // will naturally receive 403 and hit the maintenance redirect if they aren't admin.
-      }
-    }
-  } catch (error) {
-    // Fail safe
+  // If no token, redirect to login
+  if (!token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    loginUrl.searchParams.set('unauthorized', 'true');
+    return NextResponse.redirect(loginUrl);
   }
 
+  // For protected routes with token, allow access
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|css|js|json|woff|woff2|ttf|eot|otf|ico)).*)',
+  ],
 };

@@ -37,6 +37,10 @@ export interface User {
   phoneNumber?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  level?: string | null; 
+  studentStatus?: string | null;
+  isActive?: boolean; 
+  mustChangePassword?: boolean; 
 }
 
 export type ComplaintStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
@@ -46,7 +50,7 @@ export interface Category {
   id: string;
   name: string;
   description?: string | null;
-  assignedUnit?: Role | null; // e.g. ICT_UNIT, HOSTEL_MANAGEMENT_UNIT
+  assignedUnit?: Role | null; 
 }
 
 export interface Attachment {
@@ -54,7 +58,7 @@ export interface Attachment {
   fileName: string;
   fileUrl: string;
   fileType: string;
-  fileSize: number;
+   fileSize: number; 
   complaintId?: string | null;
   commentId?: string | null;
   uploadedAt: string;
@@ -73,13 +77,20 @@ export interface StatusHistory {
   changedAt: string;
 }
 
+// types/index.ts - Update Comment interface
+
 export interface Comment {
   id: string;
   content: string;
-  isInternal: boolean; // True for internal staff/SRC notes invisible to students
+  isInternal: boolean; // ✅ Make sure this is required
   complaintId: string;
   authorId: string;
-  author: User;
+  author: {
+    id: string;
+    name: string;
+    role: Role;
+    avatarUrl?: string;
+  };
   attachments?: Attachment[];
   createdAt: string;
   updatedAt: string;
@@ -171,4 +182,82 @@ export interface PaginatedResponse<T> {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  message: string;
+  imageUrl?: string;
+  expiryDate?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdById: string;
+  createdBy?: {
+    id: string;
+    name: string;
+    role: string;
+    avatarUrl?: string;
+  };
+}
+
+export interface AnnouncementResponse {
+  success: boolean;
+  data: Announcement | Announcement[];
+  count?: number;
+  message?: string;
+}
+
+export interface CreateAnnouncementPayload {
+  title: string;
+  message: string;
+  imageUrl?: string;
+  expiryDate?: string;
+}
+
+export interface UploadAnnouncementImageResponse {
+  success: boolean;
+  filename: string;
+  imageUrl: string;
+}
+
+// types.ts - Add/Update these interfaces
+
+export interface PriorityData {
+  priority: string;
+  _count: number;
+}
+
+export interface WeeklyTrend {
+  day: string;
+  count: number;
+}
+
+export interface CategoryData {
+  name: string;
+  value: number;
+}
+
+export interface GlobalStats {
+  total: number;
+  pending: number;
+  inProgress: number;
+  resolved: number;
+  rejected: number;
+  totalSuggestions: number;
+  weeklyTrend: WeeklyTrend[];
+  byPriority: PriorityData[];
+  suggestionCategories: CategoryData[];
+}
+
+export interface AdvancedStats {
+  total: number;
+  avgResolutionTime: string;
+  resolutionRate: number;
+  weeklyTrend: WeeklyTrend[];
+  byCategory: {
+    categoryId: string;
+    _count: number;
+  }[];
 }

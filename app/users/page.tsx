@@ -1,6 +1,7 @@
+// app/users/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -11,7 +12,8 @@ import { toast } from 'sonner';
 import {
   Users, Search, Shield, Edit, Trash2, UserPlus, Mail,
   Phone, RefreshCw, Check, X, AlertCircle,
-  Building, Lock, FileDown, FileUp, GraduationCap, KeyRound, Server, Building2, Landmark
+  Building, Lock, FileDown, FileUp, GraduationCap, KeyRound,
+  Camera, Loader2, Filter, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { 
   fetchUsers, 
@@ -22,7 +24,8 @@ import {
   deleteUser,
   exportUsers,
   resetUserPassword,
-  bulkImportUsers
+  bulkImportUsers,
+  uploadUserAvatar
 } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth';
@@ -34,6 +37,9 @@ interface User {
   name: string;
   role: Role;
   studentId?: string;
+  level?: string;
+  studentStatus?: string;
+  avatarUrl?: string;
   department?: {
     id: string;
     name: string;
@@ -56,9 +62,11 @@ const ALL_ROLES: { value: Role; label: string }[] = [
   { value: 'STUDENT', label: 'Student' },
 ];
 
+const STUDENT_LEVELS = ['100L', '200L', '300L', '400L', '500L', '600L'];
+
 export default function UsersManagementPage() {
   const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,19 +75,25 @@ export default function UsersManagementPage() {
   const [selectedRole, setSelectedRole] = useState<Role | ''>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showAvatarUpload, setShowAvatarUpload] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
 
   const userRole = (user?.role as Role) || 'STUDENT';
   const isSuperAdmin = userRole === 'SUPER_ADMIN';
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Data Fetching
-  const { data: rawUsers, isLoading: usersLoading, refetch } = useQuery({
-    queryKey: ['users'],
+  // Data Fetching with pagination
+  const { data: rawUsers, isLoading: usersLoading, refetch, isFetching } = useQuery({
+    queryKey: ['users', page, limit],
     queryFn: fetchUsers,
     enabled: !!user && isSuperAdmin,
+    staleTime: 30000,
   });
 
-  // Safely ensure users is always an array regardless of API payload structure
-  const users = Array.isArray(rawUsers) ? rawUsers : rawUsers?.data || rawUsers?.users || [];
+  const users = useMemo(() => {
+    return Array.isArray(rawUsers) ? rawUsers : rawUsers?.data || rawUsers?.users || [];
+  }, [rawUsers]);
 
   // Role Update Mutation
   const updateRoleMutation = useMutation({
@@ -92,7 +106,7 @@ export default function UsersManagementPage() {
     },
     onError: (error: any) => {
       toast.error('Update Failed', {
-        description: error.customMessage || error.message,
+        description: error.response?.data?.message || error.message || 'Failed to update role',
       });
     },
   });
@@ -106,22 +120,58 @@ export default function UsersManagementPage() {
     },
     onError: (error: any) => {
       toast.error('Action Failed', {
-        description: error.customMessage || error.message,
+        description: error.response?.data?.message || error.message || 'Failed to deactivate user',
       });
     },
   });
 
   // Reset Password Mutation
   const resetPasswordMutation = useMutation({
-    mutationFn: (userId: string) => resetUserPassword(userId),
+    mutationFn: ({ userId }: { userId: string }) => resetUserPassword(userId),
     onSuccess: () => {
       toast.success('Password Reset Successful', {
         description: 'Temporary default password has been applied.',
       });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error: any) => {
       toast.error('Reset Failed', {
-        description: error.customMessage || error.message,
+        description: error.response?.data?.message || error.message || 'Failed to reset password',
+      });
+    },
+  });
+
+  // Create User Mutation
+  const createUserMutation = useMutation({
+    mutationFn: (data: any) => createUser(data),
+    onSuccess: () => {
+      toast.success('User Created Successfully', {
+        description: 'Temporary password: password123',
+        duration: 5000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowCreateModal(false);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error('Creation Failed', {
+        description: error.response?.data?.message || error.message || 'Failed to create user',
+      });
+    },
+  });
+
+  // Avatar Upload Mutation
+  const uploadAvatarMutation = useMutation({
+    mutationFn: ({ userId, file }: { userId: string; file: File }) => 
+      uploadUserAvatar(userId, file),
+    onSuccess: () => {
+      toast.success('Profile Picture Updated Successfully');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowAvatarUpload(null);
+    },
+    onError: (error: any) => {
+      toast.error('Upload Failed', {
+        description: error.response?.data?.message || error.message || 'Failed to upload avatar',
       });
     },
   });
@@ -133,51 +183,65 @@ export default function UsersManagementPage() {
     }
   }, [user, authLoading, router, userRole]);
 
-  if (authLoading || usersLoading) {
-    return <LoadingState message="Verifying Privileges & Loading Users..." />;
-  }
-
-  if (!user || userRole !== 'SUPER_ADMIN') {
-    return <AccessDenied />;
-  }
-
-  const handleRoleUpdate = (targetUser: User) => {
+  const handleRoleUpdate = useCallback((targetUser: User) => {
     if (!selectedRole) {
       toast.error('Please select a target role');
       return;
     }
     updateRoleMutation.mutate({ userId: targetUser.id, role: selectedRole });
-  };
+  }, [selectedRole, updateRoleMutation]);
 
-  const handleResetPassword = (userId: string) => {
-    if (confirm('Are you sure you want to reset this user\'s password to default?')) {
-      resetPasswordMutation.mutate(userId);
+  const handleResetPassword = useCallback((userId: string, userName: string) => {
+    if (confirm(`Are you sure you want to reset ${userName}'s password to the default?`)) {
+      resetPasswordMutation.mutate({ userId });
     }
-  };
+  }, [resetPasswordMutation]);
 
-  const handleDeactivate = (userId: string) => {
-    if (confirm('Are you certain you want to delete/deactivate this user account?')) {
+  const handleDeactivate = useCallback((userId: string, userName: string) => {
+    if (confirm(`Are you certain you want to delete/deactivate ${userName}'s account?`)) {
       deleteUserMutation.mutate(userId);
     }
-  };
+  }, [deleteUserMutation]);
 
-  const handleExport = async () => {
+  const handleAvatarFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, userId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only JPEG, PNG, WEBP, and GIF images are allowed');
+      return;
+    }
+
+    uploadAvatarMutation.mutate({ userId, file });
+  }, [uploadAvatarMutation]);
+
+  const handleExport = useCallback(async () => {
     try {
-      const data = await exportUsers('json');
+      const data = await exportUsers();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `system-users-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success('User database exported successfully');
-    } catch (error) {
-      toast.error('Export failed');
+      toast.success('User data exported successfully');
+    } catch (error: any) {
+      toast.error('Export failed', {
+        description: error.message || 'Failed to export users',
+      });
     }
-  };
+  }, []);
 
-  const getRoleBadgeStyle = (role: Role) => {
+  const getRoleBadgeStyle = useCallback((role: Role) => {
     switch (role) {
       case 'SUPER_ADMIN': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'SRC_MEMBER': return 'bg-green-100 text-green-800 border-green-200';
@@ -188,52 +252,78 @@ export default function UsersManagementPage() {
       case 'CLASS_REP': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
-  };
+  }, []);
 
-  const filteredUsers = users.filter((u: User) => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.studentId && u.studentId.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesRole = !roleFilter || u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  const getStatusBadge = useCallback((status?: string) => {
+    switch (status?.toUpperCase()) {
+      case 'ACTIVE': return 'bg-green-100 text-green-800 border-green-200';
+      case 'GRADUATED': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'INACTIVE': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  }, []);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((u: User) => {
+      const matchesSearch =
+        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (u.studentId && u.studentId.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesRole = !roleFilter || u.role === roleFilter;
+      return matchesSearch && matchesRole;
+    });
+  }, [users, searchQuery, roleFilter]);
+
+  if (authLoading || usersLoading) {
+    return <LoadingState message="Verifying Privileges & Loading Users..." />;
+  }
+
+  if (!user || userRole !== 'SUPER_ADMIN') {
+    return <AccessDenied />;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Users className="w-8 h-8 text-green-700" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <Users className="w-7 h-7 sm:w-8 sm:h-8 text-green-700" />
               Advanced User Management
             </h1>
-            <p className="text-gray-600 mt-1">Full administrative control over institutional roles, units, and system accounts</p>
+            <p className="text-sm text-gray-600 mt-1">
+              {users.length} total users • {filteredUsers.length} filtered
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button variant="secondary" onClick={() => refetch()} className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button 
+              variant="secondary" 
+              onClick={() => refetch()} 
+              className="flex items-center gap-2 text-sm px-3 py-2"
+              disabled={isFetching}
+            >
+              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button variant="secondary" onClick={handleExport} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={handleExport} className="flex items-center gap-2 text-sm px-3 py-2">
               <FileDown className="w-4 h-4" />
-              Export
+              <span className="hidden sm:inline">Export</span>
             </Button>
-            <Button variant="secondary" onClick={() => setShowBulkImport(true)} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setShowBulkImport(true)} className="flex items-center gap-2 text-sm px-3 py-2">
               <FileUp className="w-4 h-4" />
-              Bulk Import
+              <span className="hidden sm:inline">Bulk Import</span>
             </Button>
-            <Button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-green-700 to-green-800 text-white flex items-center gap-2">
+            <Button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-green-700 to-green-800 text-white flex items-center gap-2 text-sm px-4 py-2">
               <UserPlus className="w-4 h-4" />
-              Register User
+              <span className="hidden sm:inline">Register User</span>
             </Button>
           </div>
         </div>
 
         {/* System Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: 'Total Accounts', value: users.length, color: 'bg-blue-50 text-blue-800', icon: Users },
             { label: 'Students & Reps', value: users.filter((u: any) => ['STUDENT', 'CLASS_REP'].includes(u.role)).length, color: 'bg-gray-100 text-gray-800', icon: GraduationCap },
@@ -242,12 +332,12 @@ export default function UsersManagementPage() {
           ].map((stat, idx) => (
             <Card key={idx} className="p-4 border-0 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${stat.color}`}>
-                  <stat.icon className="w-5 h-5" />
+                <div className={`p-2.5 sm:p-3 rounded-xl ${stat.color}`}>
+                  <stat.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-0.5">{stat.value}</p>
+                  <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">{stat.label}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5">{stat.value}</p>
                 </div>
               </div>
             </Card>
@@ -255,23 +345,23 @@ export default function UsersManagementPage() {
         </div>
 
         {/* Filter Toolbar */}
-        <Card className="p-5 border-0 shadow-md">
+        <Card className="p-4 sm:p-5 border-0 shadow-md">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-green-700 transition-colors" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-green-700 transition-colors" />
               <input
                 type="text"
-                placeholder="Search user by name, email, or student identity ID..."
+                placeholder="Search user by name, email, or student ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900"
+                className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 text-sm"
               />
             </div>
 
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 font-medium"
+              className="px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 font-medium text-sm"
             >
               <option value="">Filter By Role (All Roles)</option>
               {ALL_ROLES.map((r) => (
@@ -286,105 +376,134 @@ export default function UsersManagementPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50/80 border-b border-gray-200 text-xs uppercase tracking-wider font-semibold text-gray-600">
-                  <th className="py-4 px-6">User Account</th>
-                  <th className="py-4 px-6">Contact Channels</th>
-                  <th className="py-4 px-6">Department</th>
-                  <th className="py-4 px-6">Assigned Role</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6 text-right">Administrative Actions</th>
+                <tr className="bg-gray-50/80 border-b border-gray-200 text-[10px] sm:text-xs uppercase tracking-wider font-semibold text-gray-600">
+                  <th className="py-3 sm:py-4 px-3 sm:px-6">User Account</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6">Contact</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 hidden md:table-cell">Department</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6">Role</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 hidden sm:table-cell">Status</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((u: User) => (
                     <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0">
-                            {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                      <td className="py-3 sm:py-4 px-3 sm:px-6">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                            <div className="w-full h-full bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-sm overflow-hidden">
+                              {u.avatarUrl ? (
+                                <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
+                              ) : (
+                                u.name?.charAt(0)?.toUpperCase() || 'U'
+                              )}
+                            </div>
+                            <button
+                              onClick={() => {
+                                setShowAvatarUpload(u.id);
+                                if (fileInputRef.current) {
+                                  fileInputRef.current.click();
+                                }
+                              }}
+                              className="absolute -bottom-1 -right-1 p-0.5 bg-green-700 hover:bg-green-800 text-white rounded-full shadow-sm transition-all"
+                              title="Upload Profile Picture"
+                            >
+                              <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                            </button>
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{u.name}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{u.name}</p>
                             {u.studentId && (
-                              <span className="inline-block mt-0.5 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-mono">
+                              <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[8px] sm:text-[10px] font-mono">
                                 ID: {u.studentId}
+                              </span>
+                            )}
+                            {u.level && (
+                              <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[8px] sm:text-[10px] font-mono ml-1">
+                                {u.level}
                               </span>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-4 px-6 space-y-1">
-                        <p className="text-sm text-gray-900 flex items-center gap-2">
-                          <Mail className="w-3.5 h-3.5 text-gray-400" />
+                      <td className="py-3 sm:py-4 px-3 sm:px-6">
+                        <p className="text-xs sm:text-sm text-gray-900 truncate max-w-[120px] sm:max-w-[200px]">
                           {u.email}
                         </p>
                         {u.phoneNumber && (
-                          <p className="text-xs text-gray-500 flex items-center gap-2">
-                            <Phone className="w-3.5 h-3.5 text-gray-400" />
+                          <p className="text-[10px] sm:text-xs text-gray-500 truncate">
                             {u.phoneNumber}
                           </p>
                         )}
                       </td>
 
-                      <td className="py-4 px-6">
-                        <p className="text-sm text-gray-700 flex items-center gap-1.5">
-                          <Building className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="truncate max-w-[180px]">{u.department?.name || 'General / Unassigned'}</span>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 hidden md:table-cell">
+                        <p className="text-xs sm:text-sm text-gray-700 truncate max-w-[140px]">
+                          {u.department?.name || 'Unassigned'}
                         </p>
+                        {u.studentStatus && (
+                          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-semibold border ${getStatusBadge(u.studentStatus)}`}>
+                            {u.studentStatus}
+                          </span>
+                        )}
                       </td>
 
-                      <td className="py-4 px-6">
+                      <td className="py-3 sm:py-4 px-3 sm:px-6">
                         {editingUser?.id === u.id ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 sm:gap-2">
                             <select
                               value={selectedRole}
                               onChange={(e) => setSelectedRole(e.target.value as Role)}
-                              className="px-2.5 py-1.5 border-2 border-green-600 rounded-lg text-xs font-semibold focus:outline-none bg-white"
+                              className="px-2 py-1 text-[10px] sm:text-xs border-2 border-green-600 rounded-lg font-semibold focus:outline-none bg-white"
                             >
-                              <option value="">Change Role...</option>
+                              <option value="">Change...</option>
                               {ALL_ROLES.map((r) => (
                                 <option key={r.value} value={r.value}>{r.label}</option>
                               ))}
                             </select>
                             <button
                               onClick={() => handleRoleUpdate(u)}
-                              className="p-1.5 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                              className="p-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
                               title="Commit Role Change"
                             >
-                              <Check className="w-4 h-4" />
+                              <Check className="w-3 h-3 sm:w-4 sm:h-4" />
                             </button>
                             <button
                               onClick={() => setEditingUser(null)}
-                              className="p-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                              className="p-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                               title="Cancel"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
                             </button>
                           </div>
                         ) : (
-                          <Badge className={`${getRoleBadgeStyle(u.role)} border px-3 py-1 text-xs font-semibold`}>
+                          <Badge className={`${getRoleBadgeStyle(u.role)} border px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-semibold inline-block`}>
                             {u.role.replace(/_/g, ' ')}
                           </Badge>
                         )}
                       </td>
 
-                      <td className="py-4 px-6">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 hidden sm:table-cell">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${u.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                           {u.isActive ? 'Active' : 'Deactivated'}
                         </span>
                       </td>
 
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => handleResetPassword(u.id)}
-                            className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            onClick={() => handleResetPassword(u.id, u.name)}
+                            className="p-1.5 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                             title="Reset Password to Default"
                             disabled={resetPasswordMutation.isPending}
                           >
-                            <RefreshCw className={`w-4 h-4 ${resetPasswordMutation.isPending ? 'animate-spin' : ''}`} />
+                            {resetPasswordMutation.isPending && resetPasswordMutation.variables?.userId === u.id ? (
+                              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                            ) : (
+                              <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            )}
                           </button>
 
                           <button
@@ -392,19 +511,19 @@ export default function UsersManagementPage() {
                               setEditingUser(u);
                               setSelectedRole(u.role);
                             }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Edit User Role"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
 
                           <button
-                            onClick={() => handleDeactivate(u.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            onClick={() => handleDeactivate(u.id, u.name)}
+                            className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete / Deactivate User Account"
                             disabled={deleteUserMutation.isPending}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       </td>
@@ -412,8 +531,8 @@ export default function UsersManagementPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center">
-                      <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <td colSpan={6} className="py-12 sm:py-16 text-center">
+                      <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-600 font-medium">No matching user accounts found</p>
                     </td>
                   </tr>
@@ -424,7 +543,20 @@ export default function UsersManagementPage() {
         </Card>
       </div>
 
-      {/* Registration Modal */}
+      {/* Hidden file input for avatar upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          if (showAvatarUpload) {
+            handleAvatarFileChange(e, showAvatarUpload);
+          }
+        }}
+      />
+
+      {/* Create User Modal */}
       {showCreateModal && (
         <CreateUserModal
           onClose={() => setShowCreateModal(false)}
@@ -432,6 +564,7 @@ export default function UsersManagementPage() {
             setShowCreateModal(false);
             refetch();
           }}
+          createUserMutation={createUserMutation}
         />
       )}
 
@@ -449,9 +582,16 @@ export default function UsersManagementPage() {
   );
 }
 
-// User Registration Modal Form
-function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const queryClient = useQueryClient();
+// CreateUserModal component (optimized with useMemo)
+function CreateUserModal({ 
+  onClose, 
+  onSuccess, 
+  createUserMutation 
+}: { 
+  onClose: () => void; 
+  onSuccess: () => void;
+  createUserMutation: any;
+}) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -460,53 +600,58 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     departmentId: '',
     phoneNumber: '',
     role: 'STUDENT' as Role,
+    level: '',
+    studentStatus: 'ACTIVE',
   });
 
-  const { data: faculties = [] } = useQuery({
+  const { data: faculties = [], isLoading: facultiesLoading } = useQuery({
     queryKey: ['faculties'],
     queryFn: fetchFaculties,
+    staleTime: 60000,
   });
 
   const { data: departments = [] } = useQuery({
     queryKey: ['departments', formData.facultyId],
     queryFn: () => fetchDepartments(formData.facultyId),
     enabled: !!formData.facultyId,
+    staleTime: 60000,
   });
-
-  const createMutation = useMutation({
-    mutationFn: (data: any) => createUser(data),
-    onSuccess: () => {
-      toast.success('Account Created Successfully', {
-        description: 'Temporary initial password: password123',
-        duration: 5000,
-      });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast.error('Registration Failed', {
-        description: error.customMessage || error.message,
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate(formData);
-  };
 
   const isStaffRole = ['ICT_UNIT', 'SECURITY_UNIT', 'HOSTEL_MANAGEMENT_UNIT', 'SENATE_UNIT', 'SRC_MEMBER', 'SUPER_ADMIN'].includes(formData.role);
 
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.email) {
+      toast.error('Name and Email are required');
+      return;
+    }
+
+    const submitData = {
+      name: formData.name,
+      email: formData.email,
+      studentId: formData.studentId || undefined,
+      phoneNumber: formData.phoneNumber || undefined,
+      role: formData.role,
+      level: formData.level || undefined,
+      studentStatus: formData.studentStatus,
+      departmentId: formData.departmentId || undefined,
+      facultyId: formData.facultyId || undefined,
+    };
+
+    createUserMutation.mutate(submitData);
+  }, [formData, createUserMutation]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl p-8 border-0 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2.5">
-          <UserPlus className="w-6 h-6 text-green-700" />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <Card className="w-full max-w-2xl p-6 sm:p-8 border-0 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2.5">
+          <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-green-700" />
           Register Institutional User
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Full Name *</label>
               <input
@@ -515,7 +660,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 text-sm"
               />
             </div>
 
@@ -527,20 +672,18 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 text-sm"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">
-                System Role *
-              </label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">System Role *</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 font-medium"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 font-medium text-sm"
               >
                 {ALL_ROLES.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -549,40 +692,69 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">
-                Phone Number
-              </label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Phone Number</label>
               <input
                 type="tel"
                 placeholder="08012345678"
                 value={formData.phoneNumber}
                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 text-sm"
               />
             </div>
           </div>
 
           {!isStaffRole && (
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Student Identity ID *</label>
-              <input
-                type="text"
-                placeholder="e.g. SZ/2022/CSC/001"
-                value={formData.studentId}
-                onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                required={!isStaffRole}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900"
-              />
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Student ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SZ/2022/CSC/001"
+                    value={formData.studentId}
+                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Level</label>
+                  <select
+                    value={formData.level}
+                    onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 font-medium text-sm"
+                  >
+                    <option value="">Select Level</option>
+                    {STUDENT_LEVELS.map((level) => (
+                      <option key={level} value={level}>{level}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Student Status</label>
+                <select
+                  value={formData.studentStatus}
+                  onChange={(e) => setFormData({ ...formData, studentStatus: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 font-medium text-sm"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="GRADUATED">Graduated</option>
+                </select>
+              </div>
+            </>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">Faculty</label>
               <select
                 value={formData.facultyId}
                 onChange={(e) => setFormData({ ...formData, facultyId: e.target.value, departmentId: '' })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 text-sm"
+                disabled={facultiesLoading}
               >
                 <option value="">Select Faculty (Optional)</option>
                 {faculties.map((f: any) => (
@@ -597,7 +769,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 value={formData.departmentId}
                 onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                 disabled={!formData.facultyId}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 disabled:bg-gray-200"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 text-sm disabled:bg-gray-200"
               >
                 <option value="">Select Department (Optional)</option>
                 {departments.map((d: any) => (
@@ -614,9 +786,20 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             </p>
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <Button type="submit" className="flex-1 bg-green-700 hover:bg-green-800 text-white" disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Registering Account...' : 'Complete Registration'}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Button 
+              type="submit" 
+              className="flex-1 bg-green-700 hover:bg-green-800 text-white" 
+              disabled={createUserMutation.isPending}
+            >
+              {createUserMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Registering...
+                </>
+              ) : (
+                'Complete Registration'
+              )}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
@@ -628,7 +811,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   );
 }
 
-// Bulk Import Modal Form
+// BulkImportModal component (optimized)
 function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
@@ -642,30 +825,30 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     },
     onError: (error: any) => {
       toast.error('Bulk Import Failed', {
-        description: error.customMessage || error.message,
+        description: error.response?.data?.message || error.message || 'Failed to import users',
       });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
       toast.error('Please attach a valid file first');
       return;
     }
     importMutation.mutate(file);
-  };
+  }, [file, importMutation]);
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md p-8 border-0 shadow-2xl">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <FileUp className="w-6 h-6 text-green-700" />
+      <Card className="w-full max-w-md p-6 sm:p-8 border-0 shadow-2xl">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <FileUp className="w-5 h-5 sm:w-6 sm:h-6 text-green-700" />
           Bulk User Import
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-600 hover:bg-green-50/20 transition-all cursor-pointer">
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8 text-center hover:border-green-600 hover:bg-green-50/20 transition-all cursor-pointer">
             <input
               type="file"
               accept=".csv,.json"
@@ -674,7 +857,7 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               id="bulk-upload-input"
             />
             <label htmlFor="bulk-upload-input" className="cursor-pointer">
-              <FileUp className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <FileUp className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-700">Click to upload CSV or JSON template</p>
               <p className="text-xs text-gray-500 mt-1">Supports batch rosters</p>
             </label>
@@ -685,9 +868,20 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             )}
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <Button type="submit" className="flex-1 bg-green-700 hover:bg-green-800 text-white" disabled={importMutation.isPending || !file}>
-              {importMutation.isPending ? 'Processing Batch...' : 'Start Import'}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Button 
+              type="submit" 
+              className="flex-1 bg-green-700 hover:bg-green-800 text-white" 
+              disabled={importMutation.isPending || !file}
+            >
+              {importMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                'Start Import'
+              )}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancel

@@ -1,17 +1,58 @@
 // lib/api/index.ts
+import { io } from 'socket.io-client';
 import apiClient from './interceptor';
-import type { Complaint, ComplaintStats } from '@/types';
+import type {
+  Announcement,
+  AnnouncementResponse,
+  Complaint,
+  ComplaintStats,
+  CreateAnnouncementPayload,
+  UploadAnnouncementImageResponse,
+} from '@/types';
+
+export * from '../../types';
+
+// ============================================
+// TYPES & INTERFACES
+// ============================================
 
 export interface SystemSettings {
   allowClassRepRegistration: boolean;
   maintenanceMode: boolean;
   emailNotifications: boolean;
 }
-/**
- * AUTH ENDPOINTS
- */
+
+// ✅ Cache for frequently requested data
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60000; // 1 minute
+
+function getCached<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+function clearCache(key?: string) {
+  if (key) {
+    cache.delete(key);
+  } else {
+    cache.clear();
+  }
+}
+
+// ============================================
+// AUTH ENDPOINTS
+// ============================================
+
 export const loginAPI = async (email: string, password: string) => {
   const res = await apiClient.post('/auth/login', { email, password });
+  clearCache();
   return res.data;
 };
 
@@ -42,49 +83,136 @@ export const resetPasswordAPI = async (token: string, newPassword: string) => {
   return res.data;
 };
 
-/**
- * COMPLAINTS
- */
+// ============================================
+// COMPLAINTS
+// ============================================
+
 export const fetchComplaints = async (params: any) => {
-  // Create a clean object removing empty strings, nulls, or undefineds
   const cleanParams = Object.keys(params).reduce((acc, key) => {
-    if (params[key] !== "" && params[key] !== null && params[key] !== undefined) {
-      acc[key] = params[key];
+    const value = params[key];
+    if (value !== "" && value !== null && value !== undefined) {
+      acc[key] = value;
     }
     return acc;
   }, {} as any);
 
-  const res = await apiClient.get('/complaints', { params: cleanParams });
-  return res.data;
+  try {
+    const res = await apiClient.get('/complaints', { params: cleanParams });
+    const responseData = res.data;
+
+    if (!responseData || typeof responseData !== 'object') {
+      return {
+        data: [],
+        meta: {
+          total: 0,
+          page: 1,
+          limit: cleanParams.limit || 10,
+          totalPages: 0,
+        },
+      };
+    }
+
+    if (responseData && !responseData.meta) {
+      if (Array.isArray(responseData)) {
+        return {
+          data: responseData,
+          meta: {
+            total: responseData.length,
+            page: cleanParams.page || 1,
+            limit: cleanParams.limit || 10,
+            totalPages: Math.ceil(responseData.length / (cleanParams.limit || 10)) || 1,
+          },
+        };
+      }
+
+      if (responseData.data) {
+        const dataArray = Array.isArray(responseData.data) ? responseData.data : [];
+        return {
+          data: dataArray,
+          meta: {
+            total: responseData.total || dataArray.length,
+            page: cleanParams.page || 1,
+            limit: cleanParams.limit || 10,
+            totalPages: Math.ceil((responseData.total || dataArray.length) / (cleanParams.limit || 10)) || 1,
+          },
+        };
+      }
+
+      return {
+        data: [responseData],
+        meta: {
+          total: 1,
+          page: cleanParams.page || 1,
+          limit: cleanParams.limit || 10,
+          totalPages: 1,
+        },
+      };
+    }
+
+    if (responseData.meta) {
+      if (!responseData.meta.totalPages && responseData.meta.total) {
+        responseData.meta.totalPages = Math.ceil(
+          responseData.meta.total / (responseData.meta.limit || cleanParams.limit || 10)
+        );
+      }
+      if (!Array.isArray(responseData.data)) {
+        responseData.data = responseData.data ? [responseData.data] : [];
+      }
+    }
+
+    return responseData;
+  } catch (error) {
+    console.error('Error fetching complaints:', error);
+    return {
+      data: [],
+      meta: {
+        total: 0,
+        page: 1,
+        limit: cleanParams.limit || 10,
+        totalPages: 0,
+      },
+    };
+  }
 };
 
 export const fetchComplaintById = async (id: string) => {
+  const cacheKey = `complaint_${id}`;
+  const cached = getCached<Complaint>(cacheKey);
+  if (cached) return cached;
+
   const res = await apiClient.get(`/complaints/${id}`);
-  return res.data as Complaint;
+  const data = res.data as Complaint;
+  setCache(cacheKey, data);
+  return data;
 };
 
 export const createComplaint = async (data: any) => {
   const res = await apiClient.post('/complaints', data);
+  clearCache('complaints');
   return res.data;
 };
 
 export const updateComplaint = async (id: string, data: any) => {
   const res = await apiClient.put(`/complaints/${id}`, data);
+  clearCache(`complaint_${id}`);
+  clearCache('complaints');
   return res.data;
 };
 
 export const verifyComplaint = async (id: string) => {
-  const { data } = await apiClient.patch(`/complaints/${id}/status`, { 
-    status: 'IN_PROGRESS' 
+  const { data } = await apiClient.patch(`/complaints/${id}/status`, {
+    status: 'IN_PROGRESS'
   });
+  clearCache(`complaint_${id}`);
   return data;
 };
 
 export const rejectComplaint = async (id: string, reason?: string) => {
-  const { data } = await apiClient.patch(`/complaints/${id}/status`, { 
+  const { data } = await apiClient.patch(`/complaints/${id}/status`, {
     status: 'REJECTED',
     rejectionReason: reason
   });
+  clearCache(`complaint_${id}`);
   return data;
 };
 
@@ -92,48 +220,79 @@ export const checkDuplicateComplaints = async (query: string) => {
   const res = await apiClient.get('/complaints/check-duplicates', {
     params: { q: query },
   });
-  return res.data; 
+  return res.data;
 };
 
-/**
- * DASHBOARD & STATISTICS
- */
+// ============================================
+// DASHBOARD & STATISTICS
+// ============================================
+
 export const fetchComplaintStats = async (): Promise<ComplaintStats> => {
+  const cacheKey = 'complaint_stats';
+  const cached = getCached<ComplaintStats>(cacheKey);
+  if (cached) return cached;
+
   const res = await apiClient.get('/complaints/statistics');
-  return res.data as ComplaintStats;
+  const data = res.data as ComplaintStats;
+  setCache(cacheKey, data);
+  return data;
 };
 
 export const fetchGlobalStats = async () => {
-  const res = await apiClient.get('/complaints/global-stats');
-  return res.data;
+  const cacheKey = 'global_stats';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const res = await apiClient.get('/complaints/global-stats');
+    setCache(cacheKey, res.data);
+    return res.data;
+  } catch (error: any) {
+    if (error?.response?.status === 403) {
+      throw new Error('You do not have permission to view global statistics');
+    }
+    throw error;
+  }
 };
 
 export const fetchAdvancedStats = async () => {
-  const res = await apiClient.get('/complaints/advanced-statistics');
+  const cacheKey = 'advanced_stats';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const res = await apiClient.get('/statistics/advanced');
+  setCache(cacheKey, res.data);
   return res.data;
 };
 
-/**
- * CATEGORIES
- */
+// ============================================
+// CATEGORIES
+// ============================================
+
 export const fetchCategories = async () => {
+  const cacheKey = 'categories';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const res = await apiClient.get('/categories/names');
-  
-  // Map the data from { id, name } to { value, label }
-  return res.data.map((cat: { id: string; name: string }) => ({
+  const data = res.data.map((cat: { id: string; name: string }) => ({
     label: cat.name,
     value: cat.id
   }));
+  setCache(cacheKey, data);
+  return data;
 };
 
-/**
- * COMMENTS
- */
+// ============================================
+// COMMENTS
+// ============================================
+
 export const addComment = async (complaintId: string, content: string, isInternal: boolean = false) => {
-  const res = await apiClient.post(`/complaints/${complaintId}/comments`, { 
-    content, 
-    isInternal 
+  const res = await apiClient.post(`/complaints/${complaintId}/comments`, {
+    content,
+    isInternal
   });
+  clearCache(`complaint_${complaintId}`);
   return res.data;
 };
 
@@ -142,12 +301,12 @@ export const addSuggestionComment = async (id: string, content: string) => {
   return data;
 };
 
-/**
- * NOTIFICATIONS
- */
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
 export const fetchNotifications = async () => {
   const res = await apiClient.get('/notifications');
-  // Professional fallback to ensure it's ALWAYS an array
   return Array.isArray(res.data) ? res.data : (res.data?.notifications || []);
 };
 
@@ -161,9 +320,10 @@ export const markAllRead = async () => {
   return data;
 };
 
-/**
- * ATTACHMENTS (File Upload)
- */
+// ============================================
+// ATTACHMENTS
+// ============================================
+
 export const uploadFile = async (file: File, complaintId?: string, commentId?: string) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -173,12 +333,14 @@ export const uploadFile = async (file: File, complaintId?: string, commentId?: s
   const res = await apiClient.post('/attachments/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  if (complaintId) clearCache(`complaint_${complaintId}`);
   return res.data;
 };
 
-/**
- * USERS (Admin Only)
- */
+// ============================================
+// USERS
+// ============================================
+
 export const fetchUsers = async () => {
   const res = await apiClient.get('/users');
   return res.data;
@@ -186,26 +348,49 @@ export const fetchUsers = async () => {
 
 export const updateUserRole = async (userId: string, role: string) => {
   const res = await apiClient.patch(`/users/${userId}/role`, { role });
-  return res.data;
-};
-
-export const deleteUser = async (userId: string) => {
-  const res = await apiClient.delete(`/users/${userId}`);
+  clearCache();
   return res.data;
 };
 
 export const createUser = async (data: any) => {
   const res = await apiClient.post('/users/create', data);
+  clearCache();
+  return res.data;
+};
+
+export const resetUserPassword = async (userId: string) => {
+  const res = await apiClient.post(`/users/${userId}/reset-password`);
+  return res.data;
+};
+
+export const exportUsers = async () => {
+  const res = await apiClient.get('/users/export');
+  return res.data;
+};
+
+export const deleteUser = async (userId: string) => {
+  const res = await apiClient.patch(`/users/${userId}/deactivate`);
+  clearCache();
   return res.data;
 };
 
 export const fetchFaculties = async () => {
+  const cacheKey = 'faculties';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const res = await apiClient.get('/users/faculties');
+  setCache(cacheKey, res.data);
   return res.data;
 };
 
 export const fetchDepartments = async (facultyId: string) => {
+  const cacheKey = `departments_${facultyId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const res = await apiClient.get(`/users/departments/${facultyId}`);
+  setCache(cacheKey, res.data);
   return res.data;
 };
 
@@ -215,24 +400,17 @@ export const bulkImportUsers = async (file: File) => {
   const res = await apiClient.post('/users/bulk-import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  clearCache();
   return res.data;
 };
 
-export const exportUsers = async (format: 'csv' | 'json') => {
-  const res = await apiClient.get(`/users/export?format=${format}`);
-  return res.data;
-};
+// ============================================
+// CLASS REP
+// ============================================
 
-export const resetUserPassword = async (userId: string) => {
-  const res = await apiClient.post(`/users/${userId}/reset-password`);
-  return res.data;
-};
-
-/**
- * CLASS REP - Student Management
- */
 export const addStudentByClassRep = async (data: any) => {
-  const res = await apiClient.post('/users/create', data); 
+  const res = await apiClient.post('/users/create', data);
+  clearCache();
   return res.data;
 };
 
@@ -241,9 +419,10 @@ export const fetchMyStudents = async () => {
   return res.data;
 };
 
-/**
- * USER PROFILE
- */
+// ============================================
+// USER PROFILE
+// ============================================
+
 export const changePassword = async (data: {
   currentPassword: string;
   newPassword: string;
@@ -263,24 +442,25 @@ export const fetchUserActivity = async () => {
 };
 
 export const fetchRecentActivity = async (limit: number = 5) => {
-  const res = await apiClient.get('/notifications', { 
-    params: { limit } 
+  const res = await apiClient.get('/notifications', {
+    params: { limit }
   });
   return res.data;
 };
 
-/**
- * SUGGESTIONS & VOTING
- */
+// ============================================
+// SUGGESTIONS & VOTING
+// ============================================
+
 export const fetchSuggestions = async () => {
   const res = await apiClient.get('/suggestions');
   return res.data;
 };
 
-export const createSuggestion = async (data: { 
-  title: string; 
-  description: string; 
-  isAnonymous: boolean 
+export const createSuggestion = async (data: {
+  title: string;
+  description: string;
+  isAnonymous: boolean
 }) => {
   const res = await apiClient.post('/suggestions', data);
   return res.data;
@@ -302,45 +482,55 @@ export const verifySuggestion = async (id: string, status: 'APPROVED' | 'REJECTE
 };
 
 export const verifySuggestionStatus = async (id: string, status: 'APPROVED' | 'REJECTED') => {
-  const { data } = await apiClient.patch(`/suggestions/${id}/status`, { 
-    status 
-  });
+  const { data } = await apiClient.patch(`/suggestions/${id}/status`, { status });
   return data;
 };
 
-/**
- * MODERATION (For SRC/Class Reps)
- */
+// ============================================
+// MODERATION
+// ============================================
+
 export const fetchModerationQueue = async () => {
   const { data } = await apiClient.get('/moderation/pending');
   return data;
 };
 
+// ============================================
+// MEMBERS & ASSIGNMENT
+// ============================================
 
-// Fetch staff/SRC members for assignment
 export async function fetchMembers() {
+  const cacheKey = 'members';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const response = await apiClient.get('/users/members');
+  setCache(cacheKey, response.data);
   return response.data;
 }
 
-// Assign complaint to a member (uses your standard update complaint endpoint)
 export async function assignComplaint(complaintId: string, assignedToId: string) {
   const response = await apiClient.patch(`/complaints/${complaintId}`, { assignedToId });
+  clearCache(`complaint_${complaintId}`);
   return response.data;
 }
 
-/**
- * Fetch global system settings (Admin only).
- * Includes graceful fallback if backend endpoint is not yet active.
- */
+// ============================================
+// SYSTEM SETTINGS
+// ============================================
+
 export async function fetchSystemSettings(): Promise<SystemSettings> {
+  const cacheKey = 'system_settings';
+  const cached = getCached<SystemSettings>(cacheKey);
+  if (cached) return cached;
+
   try {
     const response = await apiClient.get('/settings');
+    setCache(cacheKey, response.data);
     return response.data;
   } catch (error: any) {
-    // If backend endpoint isn't ready yet (e.g. 404), return safe operational defaults
-    if (error?.response?.status === 404 || error?.response?.status === 500) {
-      console.warn('System settings endpoint not found on server. Using default fallbacks.');
+    if (error?.response?.status === 404 || error?.response?.status === 500 || error?.type === 'network') {
+      console.warn('System settings endpoint not found. Using default fallbacks.');
       return {
         allowClassRepRegistration: true,
         maintenanceMode: false,
@@ -351,27 +541,276 @@ export async function fetchSystemSettings(): Promise<SystemSettings> {
   }
 }
 
-/**
- * Update global system settings (Admin only).
- * Includes graceful fallback if backend endpoint is not yet active.
- */
 export async function updateSystemSettings(
   settings: Partial<SystemSettings>
 ): Promise<SystemSettings> {
   try {
     const response = await apiClient.patch('/settings', settings);
+    clearCache('system_settings');
     return response.data;
   } catch (error: any) {
-    if (error?.response?.status === 404) {
+    if (error?.response?.status === 404 || error?.type === 'network') {
       console.warn('Backend update settings endpoint missing.');
-      // Return updated state locally so UI functions smoothly during development
       return settings as SystemSettings;
     }
     throw error;
   }
 }
 
+// ============================================
+// ANNOUNCEMENTS
+// ============================================
 
-// Export the client for custom requests
-export { apiClient };
+export const fetchAnnouncements = async (): Promise<Announcement[]> => {
+  const cacheKey = 'announcements';
+  const cached = getCached<Announcement[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await apiClient.get('/announcements');
+    const data = response.data;
+
+    let announcements: Announcement[] = [];
+    if (data?.success && data?.data) {
+      announcements = Array.isArray(data.data) ? data.data : [data.data];
+    } else {
+      announcements = data?.data || [];
+    }
+    setCache(cacheKey, announcements);
+    return announcements;
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    throw error;
+  }
+};
+
+export const createAnnouncement = async (payload: CreateAnnouncementPayload): Promise<Announcement> => {
+  try {
+    const response = await apiClient.post('/announcements', payload);
+    const data = response.data;
+
+    if (data?.success && data?.data) {
+      clearCache('announcements');
+      return data.data;
+    }
+    throw new Error(data?.message || 'Failed to create announcement');
+  } catch (error: any) {
+    if (error?.response?.data) {
+      const errorData = error.response.data;
+      let message = 'Failed to create announcement';
+
+      if (typeof errorData.message === 'string') {
+        message = errorData.message;
+      } else if (Array.isArray(errorData.message)) {
+        message = errorData.message.join(', ');
+      } else if (typeof errorData.error === 'string') {
+        message = errorData.error;
+      }
+      throw new Error(message);
+    }
+    throw error;
+  }
+};
+
+export const uploadAnnouncementImage = async (file: File): Promise<UploadAnnouncementImageResponse> => {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await apiClient.post('/admin/announcements/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Error uploading image:', error);
+    throw error;
+  }
+};
+
+export const deleteAnnouncement = async (id: string): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await apiClient.delete(`/announcements/${id}`);
+    clearCache('announcements');
+    return response.data;
+  } catch (error: any) {
+    if (error?.response?.data) {
+      const errorData = error.response.data;
+      let message = 'Failed to delete announcement';
+
+      if (typeof errorData.message === 'string') {
+        message = errorData.message;
+      } else if (Array.isArray(errorData.message)) {
+        message = errorData.message.join(', ');
+      } else if (typeof errorData.error === 'string') {
+        message = errorData.error;
+      }
+      throw new Error(message);
+    }
+    throw error;
+  }
+};
+
+export const updateAnnouncement = async (
+  id: string,
+  payload: Partial<CreateAnnouncementPayload>
+): Promise<Announcement> => {
+  try {
+    const response = await apiClient.put(`/announcements/${id}`, payload);
+    const data = response.data;
+
+    if (data?.success && data?.data) {
+      clearCache('announcements');
+      clearCache(`announcement_${id}`);
+      return data.data;
+    }
+    throw new Error(data?.message || 'Failed to update announcement');
+  } catch (error: any) {
+    if (error?.response?.data) {
+      const errorData = error.response.data;
+      let message = 'Failed to update announcement';
+
+      if (typeof errorData.message === 'string') {
+        message = errorData.message;
+      } else if (Array.isArray(errorData.message)) {
+        message = errorData.message.join(', ');
+      } else if (typeof errorData.error === 'string') {
+        message = errorData.error;
+      }
+      throw new Error(message);
+    }
+    throw error;
+  }
+};
+
+// ============================================
+// USER AVATAR
+// ============================================
+
+export const uploadUserAvatar = async (userId: string, file: File) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const res = await apiClient.post(`/users/${userId}/avatar`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  clearCache(`user_${userId}`);
+  return res.data;
+};
+
+export const updateUserProfile = async (userId: string, data: any) => {
+  const res = await apiClient.patch(`/users/${userId}`, data);
+  clearCache(`user_${userId}`);
+  return res.data;
+};
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+
+export const fetchAuditLogs = async (params?: {
+  page?: number;
+  limit?: number;
+  entityType?: string;
+  entityId?: string;
+  userId?: string;
+  action?: string;
+  startDate?: string;
+  endDate?: string;
+}) => {
+  const cleanParams = Object.keys(params || {}).reduce((acc, key) => {
+    const value = params?.[key as keyof typeof params];
+    if (value !== "" && value !== null && value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {} as any);
+
+  const res = await apiClient.get('/audit-logs', { params: cleanParams });
+  return res.data;
+};
+
+export const fetchAuditLogActions = async () => {
+  const cacheKey = 'audit_actions';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const res = await apiClient.get('/audit-logs/actions');
+  setCache(cacheKey, res.data);
+  return res.data;
+};
+
+export const fetchComplaintAuditTrail = async (complaintId: string) => {
+  const res = await apiClient.get(`/audit-logs/complaint/${complaintId}`);
+  return res.data;
+};
+
+// ============================================
+// WEBSOCKET
+// ============================================
+
+export function createBroadcastSocket(userId?: string) {
+  const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+
+  const socket = io(`${socketUrl}/broadcast`, {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    auth: {
+      userId,
+    },
+  });
+
+  return socket;
+}
+
+
+
+// ============================================
+// COMPLAINT FILE UPLOAD
+// ============================================
+
+export const uploadComplaintFile = async (file: File): Promise<{
+  success: boolean;
+  filename: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+}> => {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await apiClient.post('/complaints/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Error uploading file:', error);
+    throw new Error(error?.response?.data?.message || 'Failed to upload file');
+  }
+};
+
+export const deleteComplaintFile = async (filename: string): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await apiClient.delete(`/complaints/images/${filename}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error deleting file:', error);
+    throw new Error(error?.response?.data?.message || 'Failed to delete file');
+  }
+};
+// ============================================
+// EXPORTS
+// ============================================
+
+export { apiClient, clearCache as clearApiCache };
 export default apiClient;

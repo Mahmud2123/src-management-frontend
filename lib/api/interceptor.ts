@@ -1,3 +1,4 @@
+// lib/api/interceptor.ts
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 export const apiClient = axios.create({
@@ -8,7 +9,38 @@ export const apiClient = axios.create({
   },
 });
 
-// 1. REQUEST INTERCEPTOR: Automatically attach Bearer token if present
+// ✅ Fast error message extraction
+const getErrorMessage = (errorData: any): string => {
+  if (!errorData) return 'An unexpected error occurred.';
+  
+  if (typeof errorData.message === 'string') return errorData.message;
+  if (Array.isArray(errorData.message)) return errorData.message.join('. ');
+  
+  if (typeof errorData.message === 'object' && errorData.message !== null) {
+    const firstKey = Object.keys(errorData.message)[0];
+    if (firstKey && Array.isArray(errorData.message[firstKey])) {
+      return errorData.message[firstKey][0] || 'Validation error';
+    }
+    return JSON.stringify(errorData.message);
+  }
+  
+  if (typeof errorData.error === 'string') return errorData.error;
+  
+  if (typeof errorData.statusCode === 'number') {
+    const messages: Record<number, string> = {
+      400: 'Invalid request. Please check your input.',
+      401: 'Your session has expired. Please log in again.',
+      403: 'You do not have permission to perform this action.',
+      404: 'Resource not found.',
+      500: 'Server error. Please try again later.',
+    };
+    return messages[errorData.statusCode] || `Error ${errorData.statusCode}`;
+  }
+  
+  return 'An unexpected error occurred.';
+};
+
+// ✅ Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
@@ -22,70 +54,99 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 2. RESPONSE INTERCEPTOR: Single consolidated error and success handler
+// ✅ Response interceptor with fast path
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[apiClient SUCCESS ${response.status}] ${response.config.url}`);
+      console.log(`[apiClient] ${response.status} ${response.config.url}`);
     }
     return response;
   },
   (error: AxiosError) => {
     const status = error.response?.status;
     const path = error.config?.url;
-    const hasAuthHeader = !!error.config?.headers?.Authorization;
     const errorData: any = error.response?.data;
-    const errorMessage = (errorData?.message || '').toLowerCase();
     
-    const isMaintenance = Boolean(errorData?.maintenance) || errorMessage.includes('maintenance');
+    const userMessage = getErrorMessage(errorData);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`[apiClient ERROR ${status || 'NETWORK'}] ${path}`, errorData || error.message);
+    }
 
-    console.error(`[apiClient RESPONSE ERROR ${status || 'NETWORK'}] Path: ${path}`);
-
+    // ✅ Fast path for common errors
     if (status === 401) {
-      if (hasAuthHeader) {
-        console.warn('[apiClient 401] Bearer token rejected or expired by NestJS. Purging session.');
+      if (path?.includes('/auth/login')) {
+        (error as any).customMessage = errorData?.message || 'Invalid email or password.';
+        return Promise.reject(error);
+      }
+      
+      const isAuthEndpoint = path?.includes('/auth/') || path?.includes('/login');
+      if (isAuthEndpoint) {
+        (error as any).customMessage = userMessage || 'Authentication failed.';
+        return Promise.reject(error);
+      }
+      
+      const token = localStorage.getItem('src_token');
+      if (token) {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('src_user');
           localStorage.removeItem('src_token');
+          document.cookie = 'src_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
           window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+          
+          const currentPath = window.location.pathname;
+          if (!['/login', '/', '/register', '/forgot-password'].includes(currentPath)) {
+            window.location.href = '/login?session=expired';
+          }
         }
+        (error as any).customMessage = 'Your session has expired. Please log in again.';
       } else {
-        console.warn(`[apiClient 401] Request to ${path} reached backend without an Authorization header.`);
+        (error as any).customMessage = 'Please log in to continue.';
       }
+      return Promise.reject(error);
     }
 
-   if (status === 403) {
+    // ✅ Fast path for 403
+    if (status === 403) {
+      const isMaintenance = errorData?.maintenance || 
+                           (typeof errorData?.message === 'string' && 
+                            errorData.message.toLowerCase().includes('maintenance'));
+      
       if (isMaintenance) {
-        console.warn('[apiClient 403] System is under maintenance. Redirecting to maintenance view.');
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname;
-          // Allow redirection to maintenance even from login/home if maintenance is active
           if (currentPath !== '/maintenance') {
             window.location.href = '/maintenance';
           }
         }
+        (error as any).customMessage = 'System is currently under maintenance.';
       } else {
-        console.warn('[apiClient 403] Access forbidden for current user role.');
         (error as any).customMessage = 'You do not have permission to perform this action.';
       }
+      return Promise.reject(error);
     }
     
+    // ✅ Fast path for network errors
     if (!error.response) {
-      let customMessage = 'Network error: Please check your connection';
+      let customMessage = 'Network error. Please check your connection.';
       if (error.code === 'ECONNABORTED') {
-        customMessage = 'Request timeout. The server is taking too long to respond.';
+        customMessage = 'Request timed out. Please try again.';
       } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-        customMessage = 'Unable to connect to NestJS backend on http://localhost:3001.';
+        customMessage = 'Unable to connect to the server. Please try again later.';
       }
-      console.error('[apiClient NETWORK FAILURE]:', customMessage);
       (error as any).customMessage = customMessage;
       (error as any).type = 'network';
+      return Promise.reject(error);
     }
 
+    // ✅ Fast path for server errors
     if (status && status >= 500) {
-      console.error('[apiClient 500+] Internal Server Error from NestJS');
       (error as any).customMessage = 'Server error. Please try again later.';
       (error as any).type = 'server';
+    } else if (status === 404) {
+      (error as any).customMessage = 'Resource not found.';
+    } else if (status === 400) {
+      (error as any).customMessage = userMessage || 'Invalid request. Please check your input.';
     }
 
     return Promise.reject(error);
