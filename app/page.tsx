@@ -1,18 +1,35 @@
 // app/page.tsx - Enhanced Landing Page with Professional Design
-'use client';
+"use client";
 
-import { useAuth } from '@/providers/auth';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/Button';
-import { UniversityBranding } from '@/components/UniversityBranding';
-import { 
-  Shield, Users, TrendingUp, ArrowRight, ChevronRight, 
-  GraduationCap, MapPin, Mail, Phone, BookOpen, 
-  Award, Heart, Sparkles, Building2, Globe, 
-  Clock, CheckCircle, FileText, MessageSquare,
-  ChevronDown, Menu, X
-} from 'lucide-react';
+import { useAuth } from "@/providers/auth";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/Button";
+import { UniversityBranding } from "@/components/UniversityBranding";
+import {
+  Shield,
+  Users,
+  TrendingUp,
+  ArrowRight,
+  ChevronRight,
+  GraduationCap,
+  MapPin,
+  Mail,
+  Phone,
+  BookOpen,
+  Award,
+  Heart,
+  Sparkles,
+  Building2,
+  Globe,
+  Clock,
+  CheckCircle,
+  FileText,
+  MessageSquare,
+  ChevronDown,
+  Menu,
+  X,
+} from "lucide-react";
 
 export default function HomePage() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -22,7 +39,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      router.push('/dashboard');
+      router.push("/dashboard");
     }
   }, [loading, isAuthenticated, user, router]);
 
@@ -30,8 +47,8 @@ export default function HomePage() {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   if (loading || (isAuthenticated && user)) {
@@ -39,38 +56,38 @@ export default function HomePage() {
   }
 
   const features = [
-    { 
-      icon: Shield, 
-      title: 'Secure & Private', 
-      description: 'Enterprise-grade security protecting your data',
-      color: 'from-blue-500/20 to-blue-600/20'
+    {
+      icon: Shield,
+      title: "Secure & Private",
+      description: "Enterprise-grade security protecting your data",
+      color: "from-blue-500/20 to-blue-600/20",
     },
-    { 
-      icon: Users, 
-      title: 'Community Driven', 
-      description: 'Powered by SRC for student welfare',
-      color: 'from-green-500/20 to-green-600/20'
+    {
+      icon: Users,
+      title: "Community Driven",
+      description: "Powered by SRC for student welfare",
+      color: "from-green-500/20 to-green-600/20",
     },
-    { 
-      icon: TrendingUp, 
-      title: 'Real-time Tracking', 
-      description: 'Monitor submissions every step of the way',
-      color: 'from-purple-500/20 to-purple-600/20'
+    {
+      icon: TrendingUp,
+      title: "Real-time Tracking",
+      description: "Monitor submissions every step of the way",
+      color: "from-purple-500/20 to-purple-600/20",
     },
   ];
 
   const stats = [
-    { icon: GraduationCap, value: '5,000+', label: 'Students' },
-    { icon: BookOpen, value: '9', label: 'Faculties' },
-    { icon: CheckCircle, value: '98%', label: 'Satisfaction' },
-    { icon: Clock, value: '24/7', label: 'Support' },
+    { icon: GraduationCap, value: "25,000+", label: "Students" },
+    { icon: BookOpen, value: "30+", label: "Faculties" },
+    { icon: CheckCircle, value: "98%", label: "Satisfaction" },
+    { icon: Clock, value: "24/7", label: "Support" },
   ];
 
   const quickLinks = [
-    { icon: FileText, label: 'Submit Complaint', href: '/login' },
-    { icon: MessageSquare, label: 'Track Status', href: '/login' },
-    { icon: Users, label: 'SRC Members', href: '/login' },
-    { icon: Award, label: 'Achievements', href: '/login' },
+    { icon: FileText, label: "Submit Complaint", href: "/login" },
+    { icon: MessageSquare, label: "Track Status", href: "/login" },
+    { icon: Users, label: "SRC Members", href: "/login" },
+    { icon: Award, label: "Achievements", href: "/login" },
   ];
 
   return (
@@ -84,26 +101,39 @@ export default function HomePage() {
       </div>
 
       {/* Navbar */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-slate-900/95 backdrop-blur-xl border-b border-white/10' : 'bg-transparent'
-      }`}>
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-slate-900/95 backdrop-blur-xl border-b border-white/10"
+            : "bg-transparent"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <UniversityBranding variant="compact" className="text-white" />
-            
+
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
-              <a href="#features" className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+              <a
+                href="#features"
+                className="text-white/70 hover:text-white transition-colors text-sm font-medium"
+              >
                 Features
               </a>
-              <a href="#about" className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+              <a
+                href="#about"
+                className="text-white/70 hover:text-white transition-colors text-sm font-medium"
+              >
                 About
               </a>
-              <a href="#contact" className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+              <a
+                href="#contact"
+                className="text-white/70 hover:text-white transition-colors text-sm font-medium"
+              >
                 Contact
               </a>
               <Button
-                onClick={() => router.push('/login')}
+                onClick={() => router.push("/login")}
                 className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-6 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/25"
               >
                 Sign In
@@ -115,7 +145,11 @@ export default function HomePage() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden text-white p-2 hover:bg-white/10 rounded-xl transition-colors"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -124,11 +158,26 @@ export default function HomePage() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-slate-900/95 backdrop-blur-xl border-b border-white/10">
             <div className="px-4 py-4 space-y-3">
-              <a href="#features" className="block text-white/70 hover:text-white transition-colors py-2">Features</a>
-              <a href="#about" className="block text-white/70 hover:text-white transition-colors py-2">About</a>
-              <a href="#contact" className="block text-white/70 hover:text-white transition-colors py-2">Contact</a>
+              <a
+                href="#features"
+                className="block text-white/70 hover:text-white transition-colors py-2"
+              >
+                Features
+              </a>
+              <a
+                href="#about"
+                className="block text-white/70 hover:text-white transition-colors py-2"
+              >
+                About
+              </a>
+              <a
+                href="#contact"
+                className="block text-white/70 hover:text-white transition-colors py-2"
+              >
+                Contact
+              </a>
               <Button
-                onClick={() => router.push('/login')}
+                onClick={() => router.push("/login")}
                 className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl transition-all"
               >
                 Sign In
@@ -161,40 +210,37 @@ export default function HomePage() {
             </div>
 
             <p className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up delay-100">
-              The official Student Representative Council portal for Sa'adu Zungur University.
-              Submit, track, and resolve complaints efficiently.
+              The official Student Representative Council portal for Sa'adu
+              Zungur University. Submit, track, and resolve complaints
+              efficiently.
             </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in-up delay-200">
               <Button
-                onClick={() => router.push('/login')}
+                onClick={() => router.push("/login")}
                 className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-8 py-4 rounded-2xl shadow-2xl shadow-emerald-500/25 flex items-center justify-center gap-2 text-lg transition-all hover:scale-105"
               >
                 Get Started
                 <ArrowRight className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => router.push('/login')}
-                className="w-full sm:w-auto bg-white/5 backdrop-blur-md hover:bg-white/10 text-white font-semibold px-8 py-4 rounded-2xl border border-white/10 text-lg transition-all"
-              >
-                Learn More
-                <ChevronRight className="w-5 h-5" />
               </Button>
             </div>
 
             {/* Features Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16">
               {features.map((feature, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className="group bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all hover:scale-105 hover:border-emerald-400/30"
                 >
-                  <div className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
+                  <div
+                    className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}
+                  >
                     <feature.icon className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-white font-bold text-lg mb-2">{feature.title}</h3>
+                  <h3 className="text-white font-bold text-lg mb-2">
+                    {feature.title}
+                  </h3>
                   <p className="text-white/60 text-sm">{feature.description}</p>
                 </div>
               ))}
@@ -203,10 +249,17 @@ export default function HomePage() {
             {/* Stats Section */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mb-16">
               {stats.map((stat, idx) => (
-                <div key={idx} className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
+                <div
+                  key={idx}
+                  className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10"
+                >
                   <stat.icon className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-                  <div className="text-white font-bold text-xl sm:text-2xl">{stat.value}</div>
-                  <div className="text-white/50 text-xs sm:text-sm">{stat.label}</div>
+                  <div className="text-white font-bold text-xl sm:text-2xl">
+                    {stat.value}
+                  </div>
+                  <div className="text-white/50 text-xs sm:text-sm">
+                    {stat.label}
+                  </div>
                 </div>
               ))}
             </div>
@@ -232,7 +285,9 @@ export default function HomePage() {
                   className="group bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all hover:scale-105 text-left"
                 >
                   <link.icon className="w-8 h-8 text-emerald-400 mb-3 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-white font-semibold mb-1">{link.label}</h3>
+                  <h3 className="text-white font-semibold mb-1">
+                    {link.label}
+                  </h3>
                   <p className="text-white/40 text-sm">Click to continue →</p>
                 </button>
               ))}
@@ -251,11 +306,13 @@ export default function HomePage() {
                     <Building2 className="w-7 h-7 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-xl mb-3">About SAZU</h3>
+                    <h3 className="text-white font-bold text-xl mb-3">
+                      About SAZU
+                    </h3>
                     <p className="text-white/60 leading-relaxed text-sm mb-4">
-                      Sa'adu Zungur University (SAZU) is a premier institution of higher learning 
-                      located in Bauchi State, Nigeria, committed to academic excellence and 
-                      student welfare.
+                      Sa'adu Zungur University (SAZU) is a premier institution
+                      of higher learning located in Bauchi State, Nigeria,
+                      committed to academic excellence and student welfare.
                     </p>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-3 text-white/50">
@@ -264,13 +321,16 @@ export default function HomePage() {
                       </div>
                       <div className="flex items-center gap-3 text-white/50">
                         <Mail className="w-4 h-4 text-emerald-400" />
-                        <a href="mailto:src@sazu.edu.ng" className="hover:text-white transition-colors">
-                          src@sazu.edu.ng
+                        <a
+                          href="mailto:srcsazu2026@gmail.com."
+                          className="hover:text-white transition-colors"
+                        >
+                          srcsazu2026@gmail.com
                         </a>
                       </div>
                       <div className="flex items-center gap-3 text-white/50">
                         <Phone className="w-4 h-4 text-emerald-400" />
-                        <span>+234 (0) 800 000 0000</span>
+                        <span>+234 (0) 8066183492</span>
                       </div>
                     </div>
                   </div>
@@ -278,20 +338,28 @@ export default function HomePage() {
               </div>
 
               {/* Contact Card */}
-              <div id="contact" className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10">
+              <div
+                id="contact"
+                className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10"
+              >
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 bg-blue-400/20 rounded-2xl flex items-center justify-center flex-shrink-0">
                     <MessageSquare className="w-7 h-7 text-blue-400" />
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-xl mb-3">Contact SRC</h3>
+                    <h3 className="text-white font-bold text-xl mb-3">
+                      Contact SRC
+                    </h3>
                     <p className="text-white/60 leading-relaxed text-sm mb-4">
-                      Have questions or need assistance? Reach out to the Student 
-                      Representative Council for support.
+                      Have questions or need assistance? Reach out to the
+                      Student Representative Council for support.
                     </p>
                     <div className="space-y-3">
                       <Button
-                        onClick={() => window.location.href = 'mailto:src@sazu.edu.ng'}
+                        onClick={() =>
+                          (window.location.href =
+                            "mailto:srcsazu2026@gmail.com")
+                        }
                         className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 text-sm"
                       >
                         <Mail className="w-4 h-4 inline mr-2" />
@@ -299,7 +367,12 @@ export default function HomePage() {
                       </Button>
                       <Button
                         variant="secondary"
-                        onClick={() => window.open('https://maps.google.com/?q=Sa\'adu+Zungur+University+Bauchi', '_blank')}
+                        onClick={() =>
+                          window.open(
+                            "https://maps.google.com/?q=Sa'adu+Zungur+University+Bauchi",
+                            "_blank",
+                          )
+                        }
                         className="w-full bg-white/5 backdrop-blur-md hover:bg-white/10 text-white font-semibold px-6 py-3 rounded-xl border border-white/10 text-sm"
                       >
                         <Globe className="w-4 h-4 inline mr-2" />
@@ -319,18 +392,25 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-center sm:text-left">
                 <p className="text-white/50 text-sm">
-                  © {new Date().getFullYear()} Sa'adu Zungur University, Bauchi, Nigeria
+                  © {new Date().getFullYear()} Sa'adu Zungur University, Bauchi,
+                  Nigeria
                 </p>
                 <p className="text-white/30 text-xs mt-1">
                   PMB 0698, Bauchi, Bauchi State • All Rights Reserved
                 </p>
               </div>
               <div className="flex items-center gap-6 text-white/40 text-xs">
-                <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" className="hover:text-white transition-colors">
+                  Privacy Policy
+                </a>
                 <span className="w-px h-4 bg-white/10" />
-                <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                <a href="#" className="hover:text-white transition-colors">
+                  Terms of Service
+                </a>
                 <span className="w-px h-4 bg-white/10" />
-                <a href="#" className="hover:text-white transition-colors">About SAZU</a>
+                <a href="#" className="hover:text-white transition-colors">
+                  About SAZU
+                </a>
               </div>
             </div>
           </div>
@@ -340,23 +420,37 @@ export default function HomePage() {
       {/* CSS Animations */}
       <style jsx>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-20px) rotate(5deg);
+          }
         }
         @keyframes float-delayed {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(-5deg); }
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-15px) rotate(-5deg);
+          }
         }
         @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
         }
         @keyframes fade-in-up {
-          from { 
+          from {
             opacity: 0;
             transform: translateY(20px);
           }
-          to { 
+          to {
             opacity: 1;
             transform: translateY(0);
           }
