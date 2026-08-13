@@ -20,21 +20,25 @@ export function UniversityBranding({
   const universityName = "Sa'adu Zungur University";
   const shortName = "SAZU";
 
+  const logoSrc = process.env.NEXT_PUBLIC_SRC_LOGO || '/src-logo.jpg';
+
   if (variant === 'icon-only') {
     return (
       <div className={`flex items-center ${className}`}>
-        <div className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-          <Shield className="w-5 h-5 text-white" strokeWidth={2.2} />
+        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex-shrink-0">
+          <Image src={logoSrc} alt="SAZU Logo" width={40} height={40} className="object-cover" />
         </div>
       </div>
+
     );
   }
 
+  
   if (variant === 'compact') {
     return (
       <div className={`flex items-center gap-3 ${className}`}>
-        <div className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-          <Shield className="w-5 h-5 text-white" strokeWidth={2.2} />
+        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex-shrink-0">
+          <Image src={logoSrc} alt="SAZU Logo" width={40} height={40} className="object-cover" />
         </div>
         <div className="min-w-0">
           <h1 className="text-base font-bold text-gray-900 leading-tight truncate">
@@ -55,9 +59,9 @@ export function UniversityBranding({
 
   return (
     <div className={`flex items-center gap-4 ${className}`}>
-      {/* Logo / Shield */}
-      <div className="w-12 h-12 bg-gradient-to-br from-green-700 to-green-800 rounded-2xl flex items-center justify-center shadow-lg shadow-green-900/20 flex-shrink-0">
-        <Shield className="w-6 h-6 text-white" strokeWidth={2.2} />
+      {/* Logo */}
+      <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg flex-shrink-0">
+        <Image src={logoSrc} alt="SAZU Logo" width={48} height={48} className="object-cover" />
       </div>
 
       <div>

@@ -1,0 +1,27 @@
+{
+  "name": "SAZU SRC Portal",
+  "short_name": "SRC Portal",
+  "description": "Student Representative Council Portal for Sa'adu Zungur University.",
+  "lang": "en-US",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#064e3b",
+  "icons": [
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

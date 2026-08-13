@@ -27,6 +27,17 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isAvatarRequired, setIsAvatarRequired] = useState(false);
 
+  // Ensure we have the freshest user data (fixes stale avatar URLs)
+  useEffect(() => {
+    (async () => {
+      try {
+        await refreshUser();
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, []);
+
   // Check if avatar is required (user has no avatar)
   useEffect(() => {
     if (user && !user.avatarUrl) {
@@ -35,6 +46,8 @@ export default function ProfilePage() {
         description: 'Please upload a profile picture to complete your profile.',
         duration: 6000,
       });
+    } else {
+      setIsAvatarRequired(false);
     }
   }, [user]);
 
@@ -172,6 +185,25 @@ export default function ProfilePage() {
     }
   };
 
+  // Resolve avatar src to absolute URL when backend serves uploads at a different origin
+  const resolveAvatarSrc = () => {
+    if (avatarPreview) return avatarPreview; // use local blob preview if available
+    const url = user?.avatarUrl;
+    if (!url) return null;
+    // Already absolute
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    // Prefer explicit API base for static assets, fallback to NEXT_PUBLIC_API_URL without /api
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || null;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || null;
+
+    let base = 'http://localhost:3001';
+    if (apiBase) base = apiBase.replace(/\/$/, '');
+    else if (apiUrl) base = apiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+
+    return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50/30 p-4 sm:p-6 select-none">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -182,9 +214,9 @@ export default function ProfilePage() {
           {/* Avatar with Upload */}
           <div className="relative flex-shrink-0 group">
             <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gradient-to-br from-green-700 to-green-800 shadow-md shadow-green-900/25 flex items-center justify-center">
-              {avatarPreview || user?.avatarUrl ? (
+              {resolveAvatarSrc() ? (
                 <img
-                  src={avatarPreview || user?.avatarUrl || ''}
+                  src={resolveAvatarSrc() || ''}
                   alt={user?.name || 'User'}
                   className="w-full h-full object-cover"
                 />

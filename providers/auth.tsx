@@ -36,6 +36,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const normalizeUser = useCallback((userData: any): User => {
+    // Normalize avatar URL to be absolute when it's a backend uploads path
+    let avatar = userData.avatarUrl ?? null;
+    try {
+      if (avatar && typeof avatar === 'string') {
+        if (!avatar.startsWith('http://') && !avatar.startsWith('https://')) {
+          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || null;
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || null;
+          let base = 'http://localhost:3001';
+          if (apiBase) base = apiBase.replace(/\/$/, '');
+          else if (apiUrl) base = apiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+          avatar = `${base}${avatar.startsWith('/') ? '' : '/'}${avatar}`;
+        }
+      }
+    } catch (e) {
+      // Leave avatar as-is on any unexpected error
+    }
+
     return {
       ...userData,
       id: userData.id,
@@ -46,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       studentStatus: userData.studentStatus ?? null,
       studentId: userData.studentId ?? null,
       phoneNumber: userData.phoneNumber ?? null,
-      avatarUrl: userData.avatarUrl ?? null,
+      avatarUrl: avatar,
       isActive: userData.isActive !== undefined ? userData.isActive : true,
       department: userData.department || null,
     } as User;

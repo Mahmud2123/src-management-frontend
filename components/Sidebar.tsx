@@ -268,32 +268,64 @@ export default function Sidebar() {
       </div>
 
       {/* User Card */}
-      {!collapsed ? (
-        <div className="p-4 mx-3 my-3 rounded-2xl bg-gradient-to-br from-green-50/60 to-emerald-50/40 border border-green-100/80">
-          <div className="flex items-center gap-3 mb-2.5">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+      {/* Resolve avatar URL from uploads or absolute */}
+      {(() => {
+        const resolveUploadUrl = (url?: string | null) => {
+          if (!url) return null;
+          if (url.startsWith('http://') || url.startsWith('https://')) return url;
+          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || null;
+          let base = 'http://localhost:3001';
+          if (apiBase) base = apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
+          return `${base}${url.startsWith('/') ? url : `/${url}`}`;
+        };
+
+        const avatarSrc = resolveUploadUrl(user?.avatarUrl || null);
+
+        return !collapsed ? (
+          <div className="p-4 mx-3 my-3 rounded-2xl bg-gradient-to-br from-green-50/60 to-emerald-50/40 border border-green-100/80">
+            <div className="flex items-center gap-3 mb-2.5">
+              {avatarSrc ? (
+                <img
+                  src={avatarSrc}
+                  alt={user?.name || 'User avatar'}
+                  className="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-gray-900 truncate">{user?.name || 'User'}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email || 'email@example.com'}</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-gray-900 truncate">{user?.name || 'User'}</p>
-              <p className="text-xs text-gray-500 truncate">{user?.email || 'email@example.com'}</p>
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${roleConfig.color}`}>
+              <RoleIcon className="w-3 h-3" />
+              {roleConfig.label}
             </div>
           </div>
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${roleConfig.color}`}>
-            <RoleIcon className="w-3 h-3" />
-            {roleConfig.label}
+        ) : (
+          <div className="p-3 flex justify-center border-b border-gray-100">
+            {avatarSrc ? (
+              <img
+                src={avatarSrc}
+                alt={user?.name || 'User avatar'}
+                title={`${user?.name} (${roleConfig.label})`}
+                className="w-10 h-10 rounded-full object-cover shadow-sm cursor-pointer"
+              />
+            ) : (
+              <div 
+                title={`${user?.name} (${roleConfig.label})`}
+                className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm cursor-pointer"
+              >
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
-        <div className="p-3 flex justify-center border-b border-gray-100">
-          <div 
-            title={`${user?.name} (${roleConfig.label})`}
-            className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm cursor-pointer"
-          >
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Maintenance Indicator Badge for Admins */}
       {settings?.maintenanceMode && isAdminUser && !collapsed && (

@@ -140,4 +140,3 @@ export default apiClient;
 export const canEditUsers = (role: string) => role === 'SUPER_ADMIN';
 export const canCreateUsers = (role: string) => role === 'SUPER_ADMIN' || role === 'CLASS_REP';
 export const canAssignDepartments = (role: string) => role === 'SUPER_ADMIN';
-

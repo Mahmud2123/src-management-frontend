@@ -1,7 +1,7 @@
 // app/complaints/[id]/page.tsx
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth';
@@ -79,6 +79,8 @@ export default function ComplaintDetailPage() {
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string; title?: string } | null>(null);
+  const [commentFile, setCommentFile] = useState<File | null>(null);
+  const commentFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Fetch Complaint Details
   const { data: complaint, isLoading, refetch } = useQuery({
@@ -171,13 +173,49 @@ export default function ComplaintDetailPage() {
     }
   };
 
-  const handleAddComment = () => {
+  // New: handle comment file selection
+  const handleCommentFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setCommentFile(file);
+  };
+
+  // Enhanced: create comment and optionally attach file to the comment
+  const handleAddComment = async () => {
     if (!newComment.trim()) {
       toast.error('Comment cannot be empty');
       return;
     }
-    addCommentMutation.mutate({ content: newComment, isInternal });
+
+    try {
+      // 1) Create the comment
+      const created = await addComment(complaintId, newComment, isInternal);
+      toast.success('Comment added successfully');
+      setNewComment('');
+      setIsInternal(false);
+
+      // 2) If a file is selected, upload it attached to the comment
+      if (commentFile) {
+        setUploadingFile(true);
+        try {
+          await uploadFile(commentFile, undefined, created.id);
+          toast.success('Attachment uploaded with comment');
+        } catch (err: any) {
+          toast.error('Failed to upload comment attachment', { description: err.customMessage || err.message });
+        } finally {
+          setUploadingFile(false);
+          setCommentFile(null);
+          if (commentFileInputRef.current) commentFileInputRef.current.value = '';
+        }
+      }
+
+      // Refresh
+      queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
+      refetch();
+    } catch (err: any) {
+      toast.error('Failed to add comment', { description: err.customMessage || err.message });
+    }
   };
+
 
   const handleStatusUpdate = () => {
     if (!selectedStatus) {
@@ -275,18 +313,36 @@ export default function ComplaintDetailPage() {
   // Students should not see assignedTo information
   const showAssignedTo = !isStudent;
 
-  // Get image URL with base URL
+  // Get image/attachment URL with robust base URL handling to avoid mixed-content issues
   const getImageUrl = (url: string) => {
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || null;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || null; // may include /api
+
+    // Determine fallback base
+    let base = 'http://localhost:3001';
+    if (apiBase) base = apiBase.replace(/\/$/, '');
+    else if (apiUrl) base = apiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+
+    // If the app is served over https and the base host matches the current host, prefer the page's protocol
+    try {
+      if (typeof window !== 'undefined') {
+        const pageOrigin = window.location.origin;
+        const pageHost = window.location.hostname;
+        const baseHost = new URL(base).hostname;
+        if (pageHost === baseHost) {
+          base = `${window.location.protocol}//${baseHost}`;
+        }
+      }
+    } catch (e) {
+      // ignore URL parse errors and keep base as-is
     }
-    if (url.startsWith('/uploads/')) {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
-      return `${baseUrl}${url}`;
-    }
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
-    return `${baseUrl}/uploads/${url}`;
+
+    if (url.startsWith('/')) return `${base}${url}`;
+    if (url.startsWith('uploads/')) return `${base}/${url}`;
+    return `${base}/uploads/${url}`;
   };
 
   return (
