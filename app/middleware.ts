@@ -43,10 +43,22 @@ const adminRoutes = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Get token from cookies or localStorage (via request headers)
-  const token = request.cookies.get('src_token')?.value || 
-                request.headers.get('authorization')?.replace('Bearer ', '');
+
+  // Try to obtain token from cookie or Authorization header (Bearer)
+  const cookieToken = request.cookies.get('src_token')?.value;
+  const headerAuth = request.headers.get('authorization') || request.headers.get('Authorization') || '';
+  const headerToken = headerAuth ? headerAuth.replace(/^Bearer\s+/i, '') : null;
+
+  // Normalize tokens: treat '', 'null', 'undefined' as absent
+  const normalize = (t?: string | null) => {
+    if (!t) return null;
+    const v = t.toString().trim();
+    if (!v) return null;
+    if (v.toLowerCase() === 'null' || v.toLowerCase() === 'undefined') return null;
+    return v;
+  };
+
+  const token = normalize(cookieToken) || normalize(headerToken);
 
   // Check if the path is public
   const isPublicRoute = publicRoutes.some(route => {
