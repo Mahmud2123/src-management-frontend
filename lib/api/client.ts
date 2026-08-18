@@ -10,9 +10,7 @@ import axios, {
 
 const isBrowser = typeof window !== 'undefined';
 
-const API_BASE = isBrowser
-  ? '/api'
-  : process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || (isBrowser ? '/api' : 'http://localhost:3001')).replace(/\/$/, '');
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE,
@@ -23,7 +21,7 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor — attach Authorization header from localStorage if present
+// Request interceptor ï¿½ attach Authorization header from localStorage if present
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (isBrowser) {
@@ -41,7 +39,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response interceptor — dispatch global event on 401 so AuthProvider handles logout/navigation
+// Response interceptor ï¿½ dispatch global event on 401 so AuthProvider handles logout/navigation
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError<any>) => {
