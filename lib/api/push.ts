@@ -1,6 +1,15 @@
 // lib/api/push.ts
 // Dedicated push subscribe helper that posts a normalized subscription to the backend
 
+const getApiBaseUrl = () => {
+  const base = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '/api').replace(/\/$/, '');
+  return base || '/api';
+};
+
+const apiUrl = (path: string) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${getApiBaseUrl()}${normalizedPath}`;
+};
 
 const toBase64Url = (ab: ArrayBuffer | null) => {
   if (!ab) return null;
@@ -37,7 +46,7 @@ export async function subscribeToPush(subscription: any) {
   const headers: any = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch('/api/push/subscribe', {
+  const res = await fetch(apiUrl('/push/subscribe'), {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -53,7 +62,7 @@ export async function subscribeToPush(subscription: any) {
 }
 
 export async function getVapidPublicKey() {
-  const res = await fetch('/api/push/public-key');
+  const res = await fetch(apiUrl('/push/public-key'));
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`VAPID key fetch failed ${res.status}: ${text.slice(0, 400)}`);
@@ -69,7 +78,7 @@ export async function unsubscribeFromPush(endpoint: string) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('src_token') : null;
   const headers: any = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch('/api/push/unsubscribe', {
+  const res = await fetch(apiUrl('/push/unsubscribe'), {
     method: 'DELETE',
     headers,
     credentials: 'include',
