@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ShieldAlert, RefreshCw, LogOut } from 'lucide-react';
-import apiClient from '@/lib/api/interceptor';
+import apiClient from '@/lib/api/client2';
 
 export default function MaintenancePage() {
   const [isChecking, setIsChecking] = useState(false);

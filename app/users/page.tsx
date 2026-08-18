@@ -25,9 +25,12 @@ import {
   exportUsers,
   resetUserPassword,
   bulkImportUsers,
-  uploadUserAvatar
+  uploadUserAvatar,
+  updateUser
 } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import EditUserModal from '@/components/EditUserModal';
+import AvatarImage from '@/components/AvatarImage';
 import { useAuth } from '@/providers/auth';
 import type { Role } from '@/types';
 
@@ -71,6 +74,7 @@ export default function UsersManagementPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
+  const [levelFilter, setLevelFilter] = useState<string>('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState<Role | ''>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -176,6 +180,21 @@ export default function UsersManagementPage() {
     },
   });
 
+  // Admin update user mutation (for correcting user fields)
+  const updateUserMutation = useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: any }) => updateUser(userId, data),
+    onSuccess: () => {
+      toast.success('User updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditingUser(null);
+    },
+    onError: (error: any) => {
+      toast.error('Update Failed', {
+        description: error.response?.data?.message || error.message || 'Failed to update user',
+      });
+    },
+  });
+
   useEffect(() => {
     if (!authLoading && (!user || userRole !== 'SUPER_ADMIN')) {
       toast.error('Unauthorized Access - Super Admin Privilege Required');
@@ -263,6 +282,15 @@ export default function UsersManagementPage() {
     }
   }, []);
 
+  // Normalize level strings so that '100', '100L', 100 all compare equal
+  const normalizeLevel = useCallback((lvl?: string | number | null) => {
+    if (lvl === undefined || lvl === null) return '';
+    const s = String(lvl).toUpperCase().trim();
+    // remove any non-digit characters (e.g., 'L') and return the numeric part
+    const digits = s.replace(/[^0-9]/g, '');
+    return digits;
+  }, []);
+
   const filteredUsers = useMemo(() => {
     return users.filter((u: User) => {
       const matchesSearch =
@@ -270,9 +298,10 @@ export default function UsersManagementPage() {
         u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (u.studentId && u.studentId.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesRole = !roleFilter || u.role === roleFilter;
-      return matchesSearch && matchesRole;
+      const matchesLevel = !levelFilter || (normalizeLevel(u.level) === normalizeLevel(levelFilter));
+      return matchesSearch && matchesRole && matchesLevel;
     });
-  }, [users, searchQuery, roleFilter]);
+  }, [users, searchQuery, roleFilter, levelFilter, normalizeLevel]);
 
   if (authLoading || usersLoading) {
     return <LoadingState message="Verifying Privileges & Loading Users..." />;
@@ -346,7 +375,7 @@ export default function UsersManagementPage() {
 
         {/* Filter Toolbar */}
         <Card className="p-4 sm:p-5 border-0 shadow-md">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-green-700 transition-colors" />
               <input
@@ -368,6 +397,17 @@ export default function UsersManagementPage() {
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
+
+            <select
+              value={levelFilter}
+              onChange={(e) => setLevelFilter(e.target.value)}
+              className="px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-green-700 outline-none transition-all text-gray-900 font-medium text-sm"
+            >
+              <option value="">Filter By Level (All)</option>
+              {STUDENT_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>{lvl}</option>
+              ))}
+            </select>
           </div>
         </Card>
 
@@ -382,7 +422,6 @@ export default function UsersManagementPage() {
                   <th className="py-3 sm:py-4 px-3 sm:px-6 hidden md:table-cell">Department</th>
                   <th className="py-3 sm:py-4 px-3 sm:px-6">Role</th>
                   <th className="py-3 sm:py-4 px-3 sm:px-6 hidden sm:table-cell">Status</th>
-                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
@@ -393,11 +432,8 @@ export default function UsersManagementPage() {
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
                             <div className="w-full h-full bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-sm overflow-hidden">
-                              {u.avatarUrl ? (
-                                <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
-                              ) : (
-                                u.name?.charAt(0)?.toUpperCase() || 'U'
-                              )}
+                              {/* AvatarImage will attempt to load the user's avatar via backend redirect and fall back to initials on error */}
+                              <AvatarImage userId={u.id} name={u.name} className="w-full h-full cursor-pointer" size={40} onClick={() => router.push(`/users/${u.id}`)} />
                             </div>
                             <button
                               onClick={() => {
@@ -491,47 +527,11 @@ export default function UsersManagementPage() {
                         </span>
                       </td>
 
-                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => handleResetPassword(u.id, u.name)}
-                            className="p-1.5 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                            title="Reset Password to Default"
-                            disabled={resetPasswordMutation.isPending}
-                          >
-                            {resetPasswordMutation.isPending && resetPasswordMutation.variables?.userId === u.id ? (
-                              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
-                            ) : (
-                              <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setEditingUser(u);
-                              setSelectedRole(u.role);
-                            }}
-                            className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit User Role"
-                          >
-                            <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </button>
-
-                          <button
-                            onClick={() => handleDeactivate(u.id, u.name)}
-                            className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete / Deactivate User Account"
-                            disabled={deleteUserMutation.isPending}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-12 sm:py-16 text-center">
+                  <td colSpan={5} className="py-12 sm:py-16 text-center">
                       <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-600 font-medium">No matching user accounts found</p>
                     </td>
@@ -576,6 +576,19 @@ export default function UsersManagementPage() {
             setShowBulkImport(false);
             refetch();
           }}
+        />
+      )}
+
+      {/* Edit User Modal (Admin corrections) */}
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSuccess={() => {
+            setEditingUser(null);
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+          }}
+          updateUserMutation={updateUserMutation}
         />
       )}
     </div>
@@ -779,12 +792,12 @@ function CreateUserModal({
             </div>
           </div>
 
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-start gap-3">
+          {/* <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-start gap-3">
             <Lock className="w-5 h-5 text-blue-700 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-blue-900 leading-relaxed">
               New accounts are auto-assigned a temporary bootstrap password of <strong>password123</strong>. Users will be required to update it immediately upon their first authenticated session.
             </p>
-          </div>
+          </div> */}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Button 
@@ -818,9 +831,16 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
   const importMutation = useMutation({
     mutationFn: (importFile: File) => bulkImportUsers(importFile),
-    onSuccess: () => {
-      toast.success('Bulk Import Completed Successfully');
+    onSuccess: (data: any) => {
+      // data expected to be { success: [], failed: [] }
+      const successCount = Array.isArray(data?.success) ? data.success.length : 0;
+      const failedCount = Array.isArray(data?.failed) ? data.failed.length : 0;
+      toast.success(`Bulk Import Completed — ${successCount} created, ${failedCount} failed`);
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      // Optionally log details to console for admin
+      if (failedCount > 0) {
+        console.warn('Bulk import failures:', data.failed);
+      }
       onSuccess();
     },
     onError: (error: any) => {
@@ -851,11 +871,12 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8 text-center hover:border-green-600 hover:bg-green-50/20 transition-all cursor-pointer">
             <input
               type="file"
-              accept=".csv,.json"
+              accept=".csv,.json,.xlsx,.xls"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="hidden"
               id="bulk-upload-input"
             />
+            <p className="text-xs text-gray-500 mt-2">Supports CSV, JSON, XLSX (Excel)</p>
             <label htmlFor="bulk-upload-input" className="cursor-pointer">
               <FileUp className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-700">Click to upload CSV or JSON template</p>

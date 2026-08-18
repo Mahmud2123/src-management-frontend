@@ -220,6 +220,8 @@ export default function SettingsPage() {
                   className="w-5 h-5 rounded text-blue-600 accent-blue-600" 
                 />
               </label>
+
+
             </div>
           </Card>
         </div>

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import apiClient from '@/lib/api/interceptor';
+import apiClient from '@/lib/api/client2';
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function ProfilePage() {
@@ -216,7 +216,7 @@ export default function ProfilePage() {
             <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gradient-to-br from-green-700 to-green-800 shadow-md shadow-green-900/25 flex items-center justify-center">
               {resolveAvatarSrc() ? (
                 <img
-                  src={resolveAvatarSrc() || ''}
+                src={resolveAvatarSrc() || undefined}
                   alt={user?.name || 'User'}
                   className="w-full h-full object-cover"
                 />

@@ -56,6 +56,8 @@ export default function ModerationPage() {
       closeModal();
       queryClient.invalidateQueries({ queryKey: ['moderation-queue'] });
       queryClient.invalidateQueries({ queryKey: ['complaints'] });
+      // Ensure sidebar badge and global complaint stats update immediately
+      queryClient.invalidateQueries({ queryKey: ['complaint-stats'] });
     },
     onError: (error: any) => {
       toast.error(error.customMessage || 'Action failed');

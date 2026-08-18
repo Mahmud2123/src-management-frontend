@@ -3,6 +3,7 @@
 
 import { useAuth } from '@/providers/auth';
 import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { Shield } from 'lucide-react';
 import { UnauthorizedAccess } from '@/components/UnauthorizedAccess';
@@ -31,6 +32,69 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                           pathname.startsWith('/notifications');
 
   const shouldShowSidebar = user && !isAuthRoute && !isLoginPage && !isLandingPage;
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const permissionKey = `src_push_permission_state_${user.id}`;
+    const isSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    if (!isSupported) return;
+
+    const requestPermissionAndSync = async () => {
+      try {
+        const savedState = localStorage.getItem(permissionKey);
+        const permission = Notification.permission;
+
+        if (permission === 'denied') {
+          localStorage.setItem(permissionKey, 'denied');
+          return;
+        }
+
+        if (permission === 'default' && savedState !== 'denied') {
+          const permissionResult = await Notification.requestPermission();
+          if (permissionResult !== 'granted') {
+            localStorage.setItem(permissionKey, 'denied');
+            return;
+          }
+        }
+
+        if (Notification.permission !== 'granted') return;
+        localStorage.setItem(permissionKey, 'granted');
+
+        const registration = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
+        await registration.update();
+
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          const { getVapidPublicKey, subscribeToPush } = await import('@/lib/api/push2');
+          const vapidKey = await getVapidPublicKey();
+          if (!vapidKey) return;
+
+          const applicationServerKey = Uint8Array.from(
+            atob(vapidKey.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(vapidKey.length / 4) * 4, '=')),
+            (char) => char.charCodeAt(0),
+          );
+
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey,
+          });
+
+          await subscribeToPush(subscription);
+          // DEBUG: console.debug('[push] auto-subscription saved');
+        } else {
+          const { subscribeToPush } = await import('@/lib/api/push2');
+          await subscribeToPush(subscription);
+          // DEBUG: console.debug('[push] existing subscription synced');
+        }
+      } catch (error) {
+        console.warn('[push] auto-subscribe failed:', error);
+      }
+    };
+
+    void requestPermissionAndSync();
+  }, [user?.id]);
+
 
   // Global Loading State
   if (loading) {

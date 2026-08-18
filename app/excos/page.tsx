@@ -19,7 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
-import apiClient from '@/lib/api/interceptor';
+import apiClient from '@/lib/api/client2';
 
 interface ExecutiveMember {
   id: string;

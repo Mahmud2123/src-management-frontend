@@ -5,7 +5,9 @@ import './globals.css';
 import { AuthProvider } from '@/providers/auth';
 import { ToastProvider } from '@/providers/sonner';
 import { ReactQueryProvider } from '@/providers/react-query';
-import LayoutWrapper from './LayoutWrapper';
+import ClientProviders from './ClientProviders';
+import ChatWidget from '@/components/ChatWidget';
+import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({ 
   subsets: ['latin'], 
@@ -76,14 +78,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/src-logo.png', type: 'image/png' },
+      { url: '/src-logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/src-logo.png', sizes: '180x180', type: 'image/png' },
     ],
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/src-logo.png', sizes: '180x180', type: 'image/png' },
     ],
-    shortcut: ['/favicon.ico'],
+    shortcut: ['/src-logo.png'],
   },
   manifest: '/manifest.json',
 };
@@ -96,11 +98,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
-        {/* Favicon - SAZU Logo */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        {/* Favicon - SRC Brand */}
+        <link rel="icon" href="/src-logo.png" sizes="any" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/src-logo.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/src-logo.png" />
+        <link rel="apple-touch-icon" href="/src-logo.png" />
         <link rel="manifest" href="/manifest.json" />
         
         {/* University Branding - Structured Data */}
@@ -132,15 +134,12 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} min-h-full flex flex-col bg-gray-50 text-gray-900`}>
-        <ReactQueryProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <LayoutWrapper>
-                {children}
-              </LayoutWrapper>
-            </ToastProvider>
-          </AuthProvider>
-        </ReactQueryProvider>
+        <ClientProviders>
+          {children}
+          <ChatWidget />
+          {/* Vercel Analytics: collects page views and metrics in Vercel dashboard */}
+          <Analytics />
+        </ClientProviders>
       </body>
     </html>
   );

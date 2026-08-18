@@ -173,7 +173,7 @@ export default function DashboardPage() {
 
               {/* Main University Portal Link */}
               <a
-                href={process.env.NEXT_PUBLIC_MAIN_PORTAL_URL || 'https://basug.edu.ng'}
+                href={'https://basug.safrecords.com'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white font-bold px-5 py-3.5 rounded-2xl border border-white/20 transition-all flex items-center gap-2.5 text-sm cursor-pointer group"

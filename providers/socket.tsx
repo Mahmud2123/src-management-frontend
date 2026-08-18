@@ -5,67 +5,90 @@ import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/providers/auth';
 
 interface SocketContextType {
-  socket: Socket | null;
-  isConnected: boolean;
+  notificationsSocket: Socket | null;
+  complaintsSocket: Socket | null;
+  isConnectedNotifications: boolean;
+  isConnectedComplaints: boolean;
 }
 
 const SocketContext = createContext<SocketContextType>({
-  socket: null,
-  isConnected: false,
+  notificationsSocket: null,
+  complaintsSocket: null,
+  isConnectedNotifications: false,
+  isConnectedComplaints: false,
 });
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [notificationsSocket, setNotificationsSocket] = useState<Socket | null>(null);
+  const [complaintsSocket, setComplaintsSocket] = useState<Socket | null>(null);
+  const [isConnectedNotifications, setIsConnectedNotifications] = useState(false);
+  const [isConnectedComplaints, setIsConnectedComplaints] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('src_token') : null;
     if (!user?.id || !token) return;
 
-    // Production environment dynamic URL resolution
     const baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
-    // 🚀 NestJS Gateway is set to namespace: 'notifications'
-    const socketInstance: Socket = io(`${baseUrl}/notifications`, {
-      transports: ['websocket', 'polling'], // Fallback strategy for production reverse proxies (Nginx/Cloudflare)
-      auth: {
-        token,
-        userId: user.id, // Handshake auth payload matching NestJS gateway
-      },
-      query: {
-        userId: user.id, // Fallback query payload
-      },
+    // Notifications namespace
+    const notificationsInstance: Socket = io(`${baseUrl}/notifications`, {
+      transports: ['websocket', 'polling'],
+      auth: { token, userId: user.id },
+      query: { userId: user.id },
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
     });
 
-    socketInstance.on('connect', () => {
-      console.log('[Socket] Connected to /notifications namespace:', socketInstance.id);
-      setIsConnected(true);
+    notificationsInstance.on('connect', () => {
+      // DEBUG: console.log('[Socket] Connected to /notifications namespace:', notificationsInstance.id);
+      setIsConnectedNotifications(true);
+    });
+    notificationsInstance.on('disconnect', (reason) => {
+      console.warn('[Socket] /notifications disconnected:', reason);
+      setIsConnectedNotifications(false);
+    });
+    notificationsInstance.on('connect_error', (err) => console.error('[Socket /notifications] Error', err.message));
+    setNotificationsSocket(notificationsInstance);
+
+    // Complaints namespace (separate socket to allow room joins)
+    const complaintsInstance: Socket = io(`${baseUrl}/complaints`, {
+      transports: ['websocket', 'polling'],
+      auth: { token, userId: user.id },
+      query: { userId: user.id },
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     });
 
-    socketInstance.on('disconnect', (reason) => {
-      console.warn('[Socket] Disconnected:', reason);
-      setIsConnected(false);
+    complaintsInstance.on('connect', () => {
+      // DEBUG: console.log('[Socket] Connected to /complaints namespace:', complaintsInstance.id);
+      setIsConnectedComplaints(true);
     });
-
-    socketInstance.on('connect_error', (err) => {
-      console.error('[Socket Error]', err.message);
+    complaintsInstance.on('disconnect', (reason) => {
+      console.warn('[Socket] /complaints disconnected:', reason);
+      setIsConnectedComplaints(false);
     });
-
-    setSocket(socketInstance);
+    complaintsInstance.on('connect_error', (err) => console.error('[Socket /complaints] Error', err.message));
+    setComplaintsSocket(complaintsInstance);
 
     return () => {
-      socketInstance.removeAllListeners();
-      socketInstance.disconnect();
-      setSocket(null);
-      setIsConnected(false);
+      try {
+        notificationsInstance.removeAllListeners();
+        notificationsInstance.disconnect();
+      } catch (e) {}
+      try {
+        complaintsInstance.removeAllListeners();
+        complaintsInstance.disconnect();
+      } catch (e) {}
+      setNotificationsSocket(null);
+      setComplaintsSocket(null);
+      setIsConnectedNotifications(false);
+      setIsConnectedComplaints(false);
     };
   }, [user?.id]);
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected }}>
+    <SocketContext.Provider value={{ notificationsSocket, complaintsSocket, isConnectedNotifications, isConnectedComplaints }}>
       {children}
     </SocketContext.Provider>
   );

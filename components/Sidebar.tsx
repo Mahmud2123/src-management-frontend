@@ -4,7 +4,7 @@
 import { useEffect, useState, useTransition, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/providers/auth';
-import { fetchNotifications, fetchSystemSettings } from '@/lib/api';
+import { fetchNotifications, fetchSystemSettings, fetchComplaintStats } from '@/lib/api';
 import { 
   Home, FileText, Users, Bell, Settings, 
   LogOut, Shield, Plus, Menu, X, ChevronRight, Activity,
@@ -12,15 +12,18 @@ import {
   Building2, Server, KeyRound, Landmark, PanelLeftClose, PanelLeftOpen, Wrench,
   Megaphone, Users as UsersIcon, Crown
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSocket } from '@/providers/socket';
 import type { Role } from '@/types';
 
 function SidebarNavList({ 
   onNavigate,
-  isCollapsed
+  isCollapsed,
+  pendingCount,
 }: { 
   onNavigate: (path: string) => void;
   isCollapsed: boolean;
+  pendingCount: number;
 }) {
   const { user } = useAuth();
   const pathname = usePathname() ?? '';
@@ -45,7 +48,7 @@ function SidebarNavList({
   const isSRC = isSuperAdmin || isSrcMember;
   const isPersonalUser = ['STUDENT', 'CLASS_REP'].includes(role);
   const isClassRep = role === 'CLASS_REP';
-  
+
   const isUnitStaff = [
     'ICT_UNIT', 
     'SECURITY_UNIT', 
@@ -61,6 +64,8 @@ function SidebarNavList({
     { name: 'Announcements', icon: Megaphone, path: '/announcements', show: true },
     { name: 'Suggestion Box', icon: Lightbulb, path: '/suggestions', show: true },
     { name: 'Notifications', icon: Bell, path: '/notifications', show: true, badge: unreadCount },
+    // { name: '
+    //  Assistant', icon: Lightbulb, path: '/ai', show: true },
     
     // Students & Class Reps
     { name: 'My Complaints', icon: UserCircle, path: '/complaints?filter=MINE', show: isPersonalUser },
@@ -69,7 +74,7 @@ function SidebarNavList({
     
     // SRC Members & Super Admins
     { name: 'All Complaints', icon: FileText, path: '/complaints?filter=ALL', show: isSRC || isUnitStaff },
-    { name: 'Verify Complaints', icon: ShieldCheck, path: '/moderation', show: isSRC },
+    { name: 'Verify Complaints', icon: ShieldCheck, path: '/moderation', show: isSRC || isUnitStaff, badge: pendingCount },
     { name: 'Global Statistics', icon: TrendingUp, path: '/statistics', show: isSRC },
     { name: 'Executive Council', icon: Crown, path: '/excos', show: isSRC },
     
@@ -167,7 +172,27 @@ export default function Sidebar() {
 
   const userRole = (user?.role as Role) || 'STUDENT';
   const isSuperAdmin = userRole === 'SUPER_ADMIN';
+  const isSrcMember = userRole === 'SRC_MEMBER';
+  const isSRC = isSuperAdmin || isSrcMember;
   const isAdminUser = ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(userRole);
+
+  const isUnitStaff = [
+    'ICT_UNIT',
+    'SECURITY_UNIT',
+    'HOSTEL_MANAGEMENT_UNIT',
+    'SENATE_UNIT',
+  ].includes(userRole);
+
+  // Fetch complaint stats for banner/badge (available to SRC and unit staff)
+  const { data: complaintStats } = useQuery({
+    queryKey: ['complaint-stats'],
+    queryFn: fetchComplaintStats,
+    enabled: !!user && (isSRC || isUnitStaff),
+    refetchInterval: 30000,
+    retry: false,
+  });
+
+  const pendingCount = complaintStats?.pending ?? 0;
 
   const { data: settings } = useQuery({
     queryKey: ['system-settings-sidebar-badge'],
@@ -176,6 +201,25 @@ export default function Sidebar() {
     refetchInterval: 15000,
     retry: false,
   });
+
+  const queryClient = useQueryClient();
+  const { complaintsSocket, isConnectedComplaints } = useSocket();
+
+  // Real-time invalidation for complaint stats
+  useEffect(() => {
+    if (!complaintsSocket || !isConnectedComplaints) return;
+
+  const invalidate = () =>
+  queryClient.invalidateQueries({ queryKey: ['complaint-stats'] });
+
+    complaintsSocket.on('complaint:created', invalidate);
+    complaintsSocket.on('complaint:updated:global', invalidate);
+
+    return () => {
+      try { complaintsSocket.off('complaint:created', invalidate); } catch (e) {}
+      try { complaintsSocket.off('complaint:updated:global', invalidate); } catch (e) {}
+    };
+  }, [complaintsSocket, isConnectedComplaints, queryClient]);
 
   useEffect(() => {
     if (isMobileOpen) {
@@ -232,18 +276,18 @@ export default function Sidebar() {
   // ✅ Settings only available to SUPER_ADMIN now (removed SRC_MEMBER)
   const isSettingsAllowed = isSuperAdmin;
 
-  const SidebarContent = ({ collapsed = false }: { collapsed?: boolean }) => (
+  const SidebarContent = ({ collapsed = false, pendingCount = 0 }: { collapsed?: boolean; pendingCount?: number }) => (
     <div className="flex flex-col h-full bg-white border-r border-gray-200/80 select-none transition-all duration-300">
       {/* Brand Header */}
       <div className="p-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 bg-gradient-to-br from-green-700 to-green-800 rounded-xl flex items-center justify-center shadow-md shadow-green-900/20 flex-shrink-0">
-            <Shield className="w-5 h-5 text-white" strokeWidth={2.2} />
+          <div className="w-11 h-11 rounded-xl overflow-hidden border border-green-200 bg-white shadow-sm flex-shrink-0">
+            <img src="/src-logo.png" alt="SRC Portal logo" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <h1 className="text-base font-bold text-gray-900 leading-tight truncate">SRC Portal</h1>
-              <p className="text-xs text-gray-500 font-medium truncate">Sa'adu Zungur Univ.</p>
+              <h1 className="text-base font-black text-gray-900 leading-tight truncate tracking-tight">SRC Portal</h1>
+              <p className="text-[11px] text-gray-500 font-medium truncate uppercase tracking-[0.12em]">Sa'adu Zungur Univ.</p>
             </div>
           )}
         </div>
@@ -327,7 +371,24 @@ export default function Sidebar() {
         );
       })()}
 
-      {/* Maintenance Indicator Badge for Admins */}
+      {/* Attention banner for pending complaints */}
+        {pendingCount > 0 && (isSRC || isUnitStaff) && !collapsed && (
+       <div className="mx-3 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-800 text-sm font-semibold">
+         <ShieldCheck className="w-4 h-4 text-red-600 animate-pulse flex-shrink-0" />
+         <div className="flex-1 min-w-0">
+           <div className="truncate">{pendingCount} complaint{pendingCount > 1 ? 's' : ''} awaiting verification</div>
+           <div className="text-xs text-red-600/80">Click Verify Complaints to review</div>
+         </div>
+         <button
+           onClick={() => handleNavigation('/moderation')}
+           className="ml-2 text-xs px-2 py-1 bg-red-600 text-white rounded-md"
+         >
+           Review
+         </button>
+       </div>
+        )}
+
+        {/* Maintenance Indicator Badge for Admins */}
       {settings?.maintenanceMode && isAdminUser && !collapsed && (
         <div className="mx-3 mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-amber-800 text-xs font-medium">
           <Wrench className="w-4 h-4 text-amber-600 animate-pulse flex-shrink-0" />
@@ -337,7 +398,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <Suspense fallback={<div className="flex-1 p-4 text-xs text-gray-400">Loading menu...</div>}>
-        <SidebarNavList onNavigate={handleNavigation} isCollapsed={collapsed} />
+        <SidebarNavList onNavigate={handleNavigation} isCollapsed={collapsed} pendingCount={pendingCount} />
       </Suspense>
 
       {/* Bottom Actions */}
@@ -393,12 +454,12 @@ export default function Sidebar() {
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <SidebarContent collapsed={false} />
+        <SidebarContent collapsed={false} pendingCount={pendingCount} />
       </aside>
 
       {/* Desktop Persistent Sidebar */}
       <aside className={`hidden lg:flex flex-col ${isCollapsed ? 'w-20' : 'w-72'} h-screen sticky top-0 flex-shrink-0 z-30 transition-all duration-300 ease-in-out`}>
-        <SidebarContent collapsed={isCollapsed} />
+        <SidebarContent collapsed={isCollapsed} pendingCount={pendingCount} />
       </aside>
     </>
   );

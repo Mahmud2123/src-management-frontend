@@ -23,7 +23,7 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(); // ✅ Fixed: loading not isLoading
-  const { socket, isConnected } = useSocket();
+  const { notificationsSocket: socket, isConnectedNotifications: isConnected } = useSocket();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 1. Fetch notifications
@@ -47,7 +47,7 @@ export default function NotificationsPage() {
     if (!socket || !isConnected) return;
 
     const handleNewNotification = (newNotif: any) => {
-      console.log('[Real-Time Notification Received]', newNotif);
+      // DEBUG: console.log('[Real-Time Notification Received]', newNotif);
 
       // Show toast alert
       toast.info(newNotif.title || 'New Update', {
@@ -144,16 +144,22 @@ export default function NotificationsPage() {
   // 6. Get notification config
   const getNotifConfig = (type: string) => {
     switch (type) {
-      case 'NEW_COMPLAINT': 
+      case 'NEW_COMPLAINT':
+      case 'COMPLAINT_CREATED':
+      case 'COMPLAINT_APPROVED':
+      case 'COMPLAINT_UPDATED':
+      case 'STATUS_CHANGE':
+      case 'STATUS_CHANGED':
         return { icon: <AlertTriangle className="w-5 h-5 text-orange-600" />, bg: 'bg-orange-50', label: 'Complaint' };
-      case 'NEW_SUGGESTION': 
+      case 'ANNOUNCEMENT_CREATED':
+        return { icon: <Bell className="w-5 h-5 text-emerald-600" />, bg: 'bg-emerald-50', label: 'Announcement' };
+      case 'NEW_SUGGESTION':
       case 'SUGGESTION_STATUS_CHANGE':
         return { icon: <Lightbulb className="w-5 h-5 text-yellow-600" />, bg: 'bg-yellow-50', label: 'Suggestion' };
-      case 'STATUS_CHANGE': 
-        return { icon: <ShieldCheck className="w-5 h-5 text-green-600" />, bg: 'bg-green-50', label: 'Update' };
-      case 'NEW_COMMENT': 
+      case 'NEW_COMMENT':
+      case 'COMMENT_ADDED':
         return { icon: <MessageSquare className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50', label: 'Reply' };
-      default: 
+      default:
         return { icon: <Bell className="w-5 h-5 text-gray-600" />, bg: 'bg-gray-50', label: 'System' };
     }
   };
@@ -167,13 +173,27 @@ export default function NotificationsPage() {
     const refId = notif.referenceId;
     const type = notif.type;
 
-    if (!refId) return;
+    if (!refId) {
+      router.push('/notifications');
+      return;
+    }
 
     let targetPath = '';
     if (type === 'NEW_SUGGESTION' || type === 'SUGGESTION_STATUS_CHANGE') {
       targetPath = `/suggestions/${refId}`;
-    } else if (type === 'NEW_COMPLAINT' || type === 'STATUS_CHANGE' || type === 'NEW_COMMENT') {
+    } else if (
+      type === 'NEW_COMPLAINT' ||
+      type === 'STATUS_CHANGE' ||
+      type === 'STATUS_CHANGED' ||
+      type === 'NEW_COMMENT' ||
+      type === 'COMMENT_ADDED' ||
+      type === 'COMPLAINT_CREATED' ||
+      type === 'COMPLAINT_APPROVED' ||
+      type === 'COMPLAINT_UPDATED'
+    ) {
       targetPath = `/complaints/${refId}`;
+    } else if (type === 'ANNOUNCEMENT_CREATED') {
+      targetPath = '/announcements';
     } else {
       targetPath = '/dashboard';
     }

@@ -1,6 +1,6 @@
 // lib/api/index.ts
 import { io } from 'socket.io-client';
-import apiClient from './interceptor';
+import apiClient from './client2';
 import type {
   Announcement,
   AnnouncementResponse,
@@ -228,14 +228,10 @@ export const checkDuplicateComplaints = async (query: string) => {
 // ============================================
 
 export const fetchComplaintStats = async (): Promise<ComplaintStats> => {
-  const cacheKey = 'complaint_stats';
-  const cached = getCached<ComplaintStats>(cacheKey);
-  if (cached) return cached;
-
+  // For complaint statistics we prefer fresh data since counts drive UI badges.
+  // Avoid the shared in-module cache here so React Query invalidation results in immediate refetch.
   const res = await apiClient.get('/complaints/statistics');
-  const data = res.data as ComplaintStats;
-  setCache(cacheKey, data);
-  return data;
+  return res.data as ComplaintStats;
 };
 
 export const fetchGlobalStats = async () => {
@@ -374,6 +370,13 @@ export const deleteUser = async (userId: string) => {
   return res.data;
 };
 
+// Admin update user (allows admin correction of user details)
+export const updateUser = async (userId: string, data: any) => {
+  const res = await apiClient.patch(`/users/${userId}`, data);
+  clearCache();
+  return res.data;
+};
+
 export const fetchFaculties = async () => {
   const cacheKey = 'faculties';
   const cached = getCached(cacheKey);
@@ -401,6 +404,11 @@ export const bulkImportUsers = async (file: File) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   clearCache();
+  return res.data;
+};
+
+export const fetchUserById = async (id: string) => {
+  const res = await apiClient.get(`/users/${id}`);
   return res.data;
 };
 
@@ -808,9 +816,63 @@ export const deleteComplaintFile = async (filename: string): Promise<{ success: 
     throw new Error(error?.response?.data?.message || 'Failed to delete file');
   }
 };
+
+export const getCurrentUserAPI = async () => {
+  const res = await apiClient.get('/auth/me');
+  return res.data;
+};
 // ============================================
 // EXPORTS
 // ============================================
+
+export const subscribeToPush = async (subscription: any) => {
+  // Normalize subscription payload to exactly what backend DTO expects
+  const toBase64Url = (ab: ArrayBuffer | null) => {
+    if (!ab) return null;
+    const uint8 = new Uint8Array(ab as ArrayBuffer);
+    let str = '';
+    for (let i = 0; i < uint8.length; i++) str += String.fromCharCode(uint8[i]);
+    // standard btoa then make URL-safe
+    try {
+      return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) {
+      // If btoa fails, fallback to base64 via Buffer (SSR path unlikely here)
+      try { return Buffer.from(uint8).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch { return null; }
+    }
+  };
+
+  let keys = (subscription && subscription.keys) || {};
+  // Some browsers expose getKey instead of keys property
+  if ((!keys || !keys.p256dh) && subscription && typeof subscription.getKey === 'function') {
+    try {
+      keys = {
+        p256dh: toBase64Url(subscription.getKey('p256dh') as ArrayBuffer),
+        auth: toBase64Url(subscription.getKey('auth') as ArrayBuffer),
+      };
+    } catch (e) {
+      console.warn('[push] failed to extract keys via getKey', e);
+    }
+  }
+
+  const payload: any = {
+    endpoint: subscription?.endpoint,
+    keys,
+  };
+
+  // DEBUG: console.debug('[push] subscribe payload', payload);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('src_token') : null;
+  const headers: any = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await apiClient.post('/push/subscribe', payload, { headers });
+  return res.data;
+};
+
+export const unsubscribeFromPush = async (endpoint: string) => {
+  const res = await apiClient.delete('/push/unsubscribe', { data: { endpoint } });
+  return res.data;
+};
 
 export { apiClient, clearCache as clearApiCache };
 export default apiClient;

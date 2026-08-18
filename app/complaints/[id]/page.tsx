@@ -10,6 +10,7 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
 import { fetchComplaintById, addComment, updateComplaint, uploadFile, fetchMembers, assignComplaint } from '@/lib/api';
+import { useSocket } from '@/providers/socket';
 import {
   ArrowLeft, MapPin, Calendar, User, Eye, AlertCircle, Send,
   Paperclip, Download, MessageSquare, Lock, CheckCircle, Clock,
@@ -82,6 +83,99 @@ export default function ComplaintDetailPage() {
   const [commentFile, setCommentFile] = useState<File | null>(null);
   const commentFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // Socket
+  const { complaintsSocket, isConnectedComplaints } = useSocket();
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const typingTimerRef = React.useRef<number | null>(null);
+  const isTypingRef = React.useRef(false);
+
+  // Socket listeners: join complaint room, handle incoming events
+  React.useEffect(() => {
+  if (!complaintsSocket) return;
+
+  const emitJoin = () => {
+    if (!complaintsSocket || !isConnectedComplaints) return;
+    try {
+      // DEBUG: console.debug('[socket] Emitting joinComplaint', complaintId);
+      complaintsSocket.emit('joinComplaint', { complaintId });
+    } catch (e) {
+      console.warn('[socket] join emit failed', e);
+    }
+  };
+
+  // Listen for server's join response so we can surface authorization issues
+  const handleJoinResponse = (data: any) => {
+    if (!data) return;
+    if (!data.success) {
+      console.warn('[socket] joinComplaint rejected:', data.message);
+      // Optionally show a toast for debugging; comment out in production if noisy
+      // toast.error(`Socket join failed: ${data.message}`);
+    } else {
+      // DEBUG: console.debug('[socket] joined complaint room', complaintId);
+    }
+  };
+
+  // Re-emit join on connect (handles reconnects)
+  const onConnect = () => emitJoin();
+
+  // Attach listeners
+  complaintsSocket.on('joinComplaint:response', handleJoinResponse);
+  complaintsSocket.on('connect', onConnect);
+
+  // Attempt initial join
+  emitJoin();
+
+  const handleComplaintUpdated = (payload: any) => {
+     // DEBUG: console.debug('[socket] complaint:updated payload', payload);
+     if (!payload || payload.id !== complaintId) return;
+     // Merge into query cache
+     queryClient.setQueryData(['complaint', complaintId], (old: any) => {
+       if (!old) return payload;
+       return { ...old, ...payload };
+     });
+     queryClient.invalidateQueries({ queryKey: ['complaints'] });
+   };
+
+   const handleCommentCreated = (payload: any) => {
+     // DEBUG: console.debug('[socket] comment:created payload', payload);
+     if (!payload || payload.complaintId !== complaintId) return;
+     queryClient.setQueryData(['complaint', complaintId], (old: any) => {
+       if (!old) return { comments: [payload] };
+       const existingComments = Array.isArray(old.comments) ? old.comments : [];
+       // Dedupe
+       if (existingComments.find((c: any) => c.id === payload.id)) return old;
+       return { ...old, comments: [...existingComments, payload] };
+     });
+     // optional: invalidate list
+     queryClient.invalidateQueries({ queryKey: ['complaints'] });
+   }; 
+   const handleTyping = (data: { userId: string; name?: string; isTyping: boolean; complaintId?: string }) => {
+     if (!data || data.complaintId !== complaintId) return;
+     setTypingUsers((prev) => {
+       const name = data.name || 'Someone';
+       if (data.isTyping) {
+         if (prev.includes(name)) return prev;
+         return [...prev, name];
+       } else {
+         return prev.filter((n) => n !== name);
+       }
+     });
+   };
+ 
+   complaintsSocket.on('complaint:updated', handleComplaintUpdated);
+   complaintsSocket.on('comment:created', handleCommentCreated);
+   complaintsSocket.on('comment:typing', handleTyping);
+ 
+   return () => {
+     try { complaintsSocket.emit('leaveComplaint', { complaintId }); } catch (e) {}
+     complaintsSocket.off('complaint:updated', handleComplaintUpdated);
+     complaintsSocket.off('comment:created', handleCommentCreated);
+     complaintsSocket.off('comment:typing', handleTyping);
+     complaintsSocket.off('joinComplaint:response', handleJoinResponse);
+     complaintsSocket.off('connect', onConnect);
+   };
+  }, [complaintsSocket, isConnectedComplaints, complaintId]);
+
   // Fetch Complaint Details
   const { data: complaint, isLoading, refetch } = useQuery({
     queryKey: ['complaint', complaintId],
@@ -89,11 +183,12 @@ export default function ComplaintDetailPage() {
   });
 
   // Fetch SRC/Admin Members for Assignment
+  // Staff (non-students) can manage (update status, upload attachments). Only SUPER_ADMIN may assign.
   const canManage = !isStudent;
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
     queryFn: () => fetchMembers ? fetchMembers() : Promise.resolve([]),
-    enabled: canManage,
+    enabled: isSuperAdmin,
   });
 
   // Mutation: Add Comment
@@ -179,6 +274,24 @@ export default function ComplaintDetailPage() {
     setCommentFile(file);
   };
 
+  // Typing indicator emit helpers
+  const emitTypingStart = () => {
+    if (!complaintsSocket || !isConnectedComplaints) return;
+    if (isTypingRef.current) return;
+    isTypingRef.current = true;
+    try {
+      complaintsSocket.emit('typing:start', { complaintId });
+    } catch (e) {}
+  };
+  const emitTypingStop = () => {
+    if (!complaintsSocket || !isConnectedComplaints) return;
+    if (!isTypingRef.current) return;
+    isTypingRef.current = false;
+    try {
+      complaintsSocket.emit('typing:stop', { complaintId });
+    } catch (e) {}
+  };
+
   // Enhanced: create comment and optionally attach file to the comment
   const handleAddComment = async () => {
     if (!newComment.trim()) {
@@ -192,6 +305,8 @@ export default function ComplaintDetailPage() {
       toast.success('Comment added successfully');
       setNewComment('');
       setIsInternal(false);
+      // stop typing indicator
+      emitTypingStop();
 
       // 2) If a file is selected, upload it attached to the comment
       if (commentFile) {
@@ -212,9 +327,9 @@ export default function ComplaintDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['complaint', complaintId] });
       refetch();
     } catch (err: any) {
-      toast.error('Failed to add comment', { description: err.customMessage || err.message });
-    }
-  };
+        toast.error('Failed to add comment', { description: err.customMessage || err.message });
+      }
+    };
 
 
   const handleStatusUpdate = () => {
@@ -312,6 +427,8 @@ export default function ComplaintDetailPage() {
 
   // Students should not see assignedTo information
   const showAssignedTo = !isStudent;
+
+  // Socket listeners moved earlier to ensure hooks are stable across renders
 
   // Get image/attachment URL with robust base URL handling to avoid mixed-content issues
   const getImageUrl = (url: string) => {
@@ -430,7 +547,8 @@ export default function ComplaintDetailPage() {
                                    attachment.fileType?.includes('png') ||
                                    attachment.fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
                     const fileUrl = attachment.fileUrl || attachment.url;
-                    const fullUrl = getImageUrl(fileUrl);
+                    // Use backend redirect endpoint which enforces auth/authorization and returns a signed URL
+                    const fullUrl = `/api/files/attachments/${attachment.id}/redirect`;
 
                     return (
                       <div key={attachment.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-green-300 transition-colors group">
@@ -465,7 +583,7 @@ export default function ComplaintDetailPage() {
                         </div>
                         <a
                           href={fullUrl}
-                          download
+                                                  download={attachment.fileName}
                           className="p-2 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0"
                           aria-label={`Download ${attachment.fileName}`}
                         >
@@ -539,9 +657,21 @@ export default function ComplaintDetailPage() {
 
               {/* Add Comment Form */}
               <div className="space-y-4 pt-6 border-t border-gray-100">
+                {typingUsers.length > 0 && (
+                  <div className="text-xs text-gray-500 italic">{typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...</div>
+                )}
                 <textarea
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  onChange={(e) => {
+                    setNewComment(e.target.value);
+                    // typing indicator: start & debounce stop
+                    emitTypingStart();
+                    if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current as any);
+                    typingTimerRef.current = window.setTimeout(() => {
+                      emitTypingStop();
+                      typingTimerRef.current = null;
+                    }, 1500);
+                  }}
                   placeholder={isStudent ? "Type your response here..." : "Type your response here... (check Internal Note for staff-only comments)"}
                   rows={4}
                   aria-label="Add comment text"
@@ -756,58 +886,60 @@ export default function ComplaintDetailPage() {
                     )}
                   </div>
 
-                  {/* Assignee Management */}
-                  <div className="pt-2 border-t border-gray-100">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Assign Staff / Member</label>
-                    {editingAssignee ? (
-                      <div className="space-y-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200">
-                        <select
-                          value={selectedAssignee}
-                          onChange={(e) => setSelectedAssignee(e.target.value)}
-                          aria-label="Select assignee"
-                          className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                        >
-                          <option value="">Select Team Member</option>
-                          {members.map((member: any) => (
-                            <option key={member.id} value={member.id}>
-                              {member.name} ({member.role.replace('_', ' ')})
-                            </option>
-                          ))}
-                        </select>
+                  {/* Assignee Management (SUPER_ADMIN only) */}
+                  {isSuperAdmin && (
+                    <div className="pt-2 border-t border-gray-100">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Assign Staff / Member</label>
+                      {editingAssignee ? (
+                        <div className="space-y-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200">
+                          <select
+                            value={selectedAssignee}
+                            onChange={(e) => setSelectedAssignee(e.target.value)}
+                            aria-label="Select assignee"
+                            className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                          >
+                            <option value="">Select Team Member</option>
+                            {members.map((member: any) => (
+                              <option key={member.id} value={member.id}>
+                                {member.name} ({member.role.replace('_', ' ')})
+                              </option>
+                            ))}
+                          </select>
 
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={handleAssignUpdate} 
-                            disabled={assignMutation.isPending}
-                            className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white hover:bg-green-700 text-xs py-2"
-                          >
-                            <UserCheck className="w-3.5 h-3.5" />
-                            {assignMutation.isPending ? 'Assigning...' : 'Assign'}
-                          </Button>
-                          <Button 
-                            variant="secondary" 
-                            onClick={() => setEditingAssignee(false)} 
-                            className="flex items-center justify-center gap-1.5 text-xs py-2 border border-gray-300"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            Cancel
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              onClick={handleAssignUpdate} 
+                              disabled={assignMutation.isPending}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white hover:bg-green-700 text-xs py-2"
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              {assignMutation.isPending ? 'Assigning...' : 'Assign'}
+                            </Button>
+                            <Button 
+                              variant="secondary" 
+                              onClick={() => setEditingAssignee(false)} 
+                              className="flex items-center justify-center gap-1.5 text-xs py-2 border border-gray-300"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={() => {
-                          setEditingAssignee(true);
-                          setSelectedAssignee(complaint.assignedToId || '');
-                        }}
-                        variant="secondary"
-                        className="w-full flex items-center justify-center gap-2 border border-gray-200 text-sm font-semibold hover:bg-gray-50"
-                      >
-                        <UserCheck className="w-4 h-4 text-gray-600" />
-                        {complaint.assignedTo ? 'Reassign Member' : 'Assign Member'}
-                      </Button>
-                    )}
-                  </div>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            setEditingAssignee(true);
+                            setSelectedAssignee(complaint.assignedToId || '');
+                          }}
+                          variant="secondary"
+                          className="w-full flex items-center justify-center gap-2 border border-gray-200 text-sm font-semibold hover:bg-gray-50"
+                        >
+                          <UserCheck className="w-4 h-4 text-gray-600" />
+                          {complaint.assignedTo ? 'Reassign Member' : 'Assign Member'}
+                        </Button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Attachment Upload */}
                   <div className="pt-2 border-t border-gray-100">

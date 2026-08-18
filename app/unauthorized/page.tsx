@@ -1,13 +1,41 @@
 // app/unauthorized/page.tsx
 'use client';
 
-import { UnauthorizedAccess } from '@/components/UnauthorizedAccess';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { UnauthorizedAccess } from '@/components/UnauthorizedAccess';
 
-export default function UnauthorizedPage() {
+type UnauthorizedType =
+  | 'unauthorized'
+  | 'forbidden'
+  | 'session-expired';
+
+function UnauthorizedContent() {
   const searchParams = useSearchParams();
-  const type = (searchParams.get('type') as 'unauthorized' | 'forbidden' | 'session-expired') || 'unauthorized';
+
+  const rawType = searchParams.get('type');
+
+  const type: UnauthorizedType =
+    rawType === 'forbidden' ||
+    rawType === 'session-expired' ||
+    rawType === 'unauthorized'
+      ? rawType
+      : 'unauthorized';
+
   const message = searchParams.get('message') || undefined;
 
-  return <UnauthorizedAccess type={type} message={message} />;
+  return (
+    <UnauthorizedAccess
+      type={type}
+      message={message}
+    />
+  );
+}
+
+export default function UnauthorizedPage() {
+  return (
+    <Suspense fallback={null}>
+      <UnauthorizedContent />
+    </Suspense>
+  );
 }
