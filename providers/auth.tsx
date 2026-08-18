@@ -59,10 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const avatarValue = data?.avatarUrl;
     const isValidAvatar = typeof avatarValue === 'string' && avatarValue.trim() && avatarValue !== '?' && avatarValue !== 'null' && avatarValue !== 'undefined';
     const directAvatar = isValidAvatar
-      ? (avatarValue.startsWith('http://') || avatarValue.startsWith('https://') || avatarValue.startsWith('/uploads') || avatarValue.startsWith('uploads/') || avatarValue.startsWith('r2://')
+      ? (avatarValue.startsWith('http://') || avatarValue.startsWith('https://') || avatarValue.startsWith('/uploads') || avatarValue.startsWith('uploads/')
           ? avatarValue
           : null)
       : null;
+
+    // If avatar is a storage URI (r2://...) or a storage key, do not expose it directly to the browser.
+    // Use the backend redirect endpoint to safely resolve or proxy the asset.
+    const resolvedAvatar = directAvatar ?? (data?.id ? `/api/files/users/${data.id}/avatar/redirect` : null);
 
     return {
       ...data,
@@ -74,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       studentStatus: data.studentStatus ?? null,
       studentId: data.studentId ?? null,
       phoneNumber: data.phoneNumber ?? null,
-      avatarUrl: directAvatar ?? (data?.id ? `/api/files/users/${data.id}/avatar/redirect` : null),
+      avatarUrl: resolvedAvatar,
       isActive: data.isActive ?? true,
       department: data.department ?? null,
     } as User;

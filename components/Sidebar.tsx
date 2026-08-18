@@ -317,9 +317,16 @@ export default function Sidebar() {
         const resolveUploadUrl = (url?: string | null) => {
           if (!url) return null;
           if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+          // Map r2:// URIs or plain storage keys to the backend avatar redirect endpoint
+          // so the backend will safely proxy or sign the URL for the browser.
+          if (url.startsWith('r2://') || url.includes('/')) {
+            return `/api/files/users/${user.id}/avatar/redirect`;
+          }
+
           const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || null;
           let base = 'https://src-management-backend.onrender.com';
-          if (apiBase) base = apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
+          if (apiBase) base = apiBase.replace(/\/api\/?$/,'').replace(/\/$/, '');
           return `${base}${url.startsWith('/') ? url : `/${url}`}`;
         };
 
