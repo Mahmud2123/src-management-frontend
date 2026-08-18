@@ -318,7 +318,7 @@ export default function Sidebar() {
           if (!url) return null;
           if (url.startsWith('http://') || url.startsWith('https://')) return url;
           const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || null;
-          let base = 'http://localhost:3001';
+          let base = 'https://src-management-backend.onrender.com';
           if (apiBase) base = apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
           return `${base}${url.startsWith('/') ? url : `/${url}`}`;
         };

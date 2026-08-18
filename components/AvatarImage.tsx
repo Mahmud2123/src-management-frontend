@@ -2,20 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 
-export default function AvatarImage({ userId, name, size = 40, className = '', onClick }: { userId: string; name?: string; size?: number | string; className?: string; onClick?: () => void }) {
+export default function AvatarImage({ userId, name, size = 40, className = '', onClick }: { userId?: string; name?: string; size?: number | string; className?: string; onClick?: () => void }) {
   const [failed, setFailed] = useState(false);
-  const [src, setSrc] = useState<string>(`/api/files/users/${userId}/avatar/redirect`);
+  const [src, setSrc] = useState<string | null>(userId ? `/api/files/users/${userId}/avatar/redirect` : null);
 
   useEffect(() => {
-    // reset when userId changes
     setFailed(false);
-    setSrc(`/api/files/users/${userId}/avatar/redirect`);
+    setSrc(userId ? `/api/files/users/${userId}/avatar/redirect` : null);
   }, [userId]);
 
   const sizeNum = typeof size === 'number' ? size : parseInt(String(size).replace(/[^0-9]/g, ''), 10) || 40;
   const sizePx = `${sizeNum}px`;
 
-  if (failed) {
+  if (!userId || !src || failed) {
     const initial = name?.charAt(0)?.toUpperCase() || 'U';
     return (
       <div

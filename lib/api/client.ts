@@ -10,7 +10,8 @@ import axios, {
 
 const isBrowser = typeof window !== 'undefined';
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || (isBrowser ? '/api' : 'http://localhost:3001')).replace(/\/$/, '');
+const defaultApiBase = isBrowser ? '/api' : 'https://src-management-backend.onrender.com';
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || defaultApiBase).replace(/\/$/, '');
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE,

@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Determine backend API base for server-to-server calls (middleware runs on server)
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://src-management-backend.onrender.com';
 
   // Fetch maintenance status (cache for short time by module-level variable)
   try {

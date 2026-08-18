@@ -111,7 +111,6 @@ export default function ProfilePage() {
         await refreshUser();
         queryClient.invalidateQueries({ queryKey: ['user'] });
         setAvatarFile(null);
-        setAvatarPreview(null);
         setIsAvatarRequired(false);
       }
     } catch (err: any) {
@@ -185,21 +184,25 @@ export default function ProfilePage() {
     }
   };
 
-  // Resolve avatar src to absolute URL when backend serves uploads at a different origin
+  const normalizeAvatarUrl = (value?: string | null) => {
+    if (!value) return null;
+    const trimmed = String(value).trim();
+    if (!trimmed || trimmed === '?' || trimmed === 'null' || trimmed === 'undefined') {
+      return null;
+    }
+    return trimmed;
+  };
+
+  // Resolve avatar src to absolute URL when backend serves uploads at a different origin.
+  // Keep the local blob preview until the refreshed user record confirms the persisted URL.
   const resolveAvatarSrc = () => {
-    if (avatarPreview) return avatarPreview; // use local blob preview if available
-    const url = user?.avatarUrl;
+    if (avatarPreview) return avatarPreview;
+    const url = normalizeAvatarUrl(user?.avatarUrl);
     if (!url) return null;
-    // Already absolute
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
 
-    // Prefer explicit API base for static assets, fallback to NEXT_PUBLIC_API_URL without /api
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || null;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || null;
-
-    let base = 'http://localhost:3001';
-    if (apiBase) base = apiBase.replace(/\/$/, '');
-    else if (apiUrl) base = apiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://src-management-backend.onrender.com';
+    const base = apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
     return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
   };

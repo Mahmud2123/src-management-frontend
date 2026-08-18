@@ -33,7 +33,8 @@ export function AnnouncementImage({
       }
 
       if (src.startsWith('/uploads/')) {
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://src-management-backend.onrender.com';
+        const baseUrl = apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
         setResolvedSrc(`${baseUrl}${src}`);
         return;
       }

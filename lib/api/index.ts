@@ -762,7 +762,9 @@ export const fetchComplaintAuditTrail = async (complaintId: string) => {
 // ============================================
 
 export function createBroadcastSocket(userId?: string) {
-  const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+  const socketUrl = (process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://src-management-backend.onrender.com')
+    .replace(/\/api$/, '')
+    .replace(/\/$/, '');
 
   const socket = io(`${socketUrl}/broadcast`, {
     transports: ['websocket', 'polling'],

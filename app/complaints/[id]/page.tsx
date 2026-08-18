@@ -439,7 +439,7 @@ export default function ComplaintDetailPage() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || null; // may include /api
 
     // Determine fallback base
-    let base = 'http://localhost:3001';
+    let base = 'https://src-management-backend.onrender.com';
     if (apiBase) base = apiBase.replace(/\/$/, '');
     else if (apiUrl) base = apiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
 

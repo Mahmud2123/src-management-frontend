@@ -29,7 +29,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('src_token') : null;
     if (!user?.id || !token) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+    const baseUrl = (process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://src-management-backend.onrender.com')
+      .replace(/\/api$/, '')
+      .replace(/\/$/, '');
 
     // Notifications namespace
     const notificationsInstance: Socket = io(`${baseUrl}/notifications`, {
