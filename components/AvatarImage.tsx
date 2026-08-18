@@ -7,7 +7,19 @@ export default function AvatarImage({ userId, name, size = 40, className = '', o
     if (!value) return null;
     const trimmed = String(value).trim();
     if (!trimmed || trimmed === '?' || trimmed === 'null' || trimmed === 'undefined') return null;
-    return trimmed;
+
+    // Only accept absolute HTTP/S, data:, or blob: URLs directly in the img src.
+    try {
+      const u = new URL(trimmed);
+      const allowed = ['http:', 'https:', 'data:', 'blob:'];
+      if (allowed.includes(u.protocol)) return trimmed;
+      // any unknown protocol (eg r2://) should not be used directly by the browser
+      return null;
+    } catch (e) {
+      // If it's a relative path (starts with /) allow it as-is
+      if (trimmed.startsWith('/')) return trimmed;
+      return null;
+    }
   };
 
   const [failed, setFailed] = useState(false);
