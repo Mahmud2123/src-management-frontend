@@ -2,14 +2,22 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 
-export default function AvatarImage({ userId, name, size = 40, className = '', onClick }: { userId?: string; name?: string; size?: number | string; className?: string; onClick?: () => void }) {
+export default function AvatarImage({ userId, name, size = 40, className = '', onClick, avatarUrl }: { userId?: string; name?: string; size?: number | string; className?: string; onClick?: () => void; avatarUrl?: string | null }) {
+  const normalizeAvatarUrl = (value?: string | null) => {
+    if (!value) return null;
+    const trimmed = String(value).trim();
+    if (!trimmed || trimmed === '?' || trimmed === 'null' || trimmed === 'undefined') return null;
+    return trimmed;
+  };
+
   const [failed, setFailed] = useState(false);
-  const [src, setSrc] = useState<string | null>(userId ? `/api/files/users/${userId}/avatar/redirect` : null);
+  const [src, setSrc] = useState<string | null>(() => normalizeAvatarUrl(avatarUrl) || (userId ? `/api/files/users/${userId}/avatar/redirect` : null));
 
   useEffect(() => {
     setFailed(false);
-    setSrc(userId ? `/api/files/users/${userId}/avatar/redirect` : null);
-  }, [userId]);
+    const resolved = normalizeAvatarUrl(avatarUrl) || (userId ? `/api/files/users/${userId}/avatar/redirect` : null);
+    setSrc(resolved);
+  }, [userId, avatarUrl]);
 
   const sizeNum = typeof size === 'number' ? size : parseInt(String(size).replace(/[^0-9]/g, ''), 10) || 40;
   const sizePx = `${sizeNum}px`;

@@ -433,7 +433,7 @@ export default function UsersManagementPage() {
                           <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
                             <div className="w-full h-full bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-sm overflow-hidden">
                               {/* AvatarImage will attempt to load the user's avatar via backend redirect and fall back to initials on error */}
-                              <AvatarImage userId={u.id} name={u.name} className="w-full h-full cursor-pointer" size={40} onClick={() => router.push(`/users/${u.id}`)} />
+                              <AvatarImage userId={u.id} avatarUrl={u.avatarUrl} name={u.name} className="w-full h-full cursor-pointer" size={40} onClick={() => router.push(`/users/${u.id}`)} />
                             </div>
                             <button
                               onClick={() => {

@@ -56,6 +56,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const normalizeUser = useCallback((data: any): User => {
+    const avatarValue = data?.avatarUrl;
+    const isValidAvatar = typeof avatarValue === 'string' && avatarValue.trim() && avatarValue !== '?' && avatarValue !== 'null' && avatarValue !== 'undefined';
+    const directAvatar = isValidAvatar
+      ? (avatarValue.startsWith('http://') || avatarValue.startsWith('https://') || avatarValue.startsWith('/uploads') || avatarValue.startsWith('uploads/') || avatarValue.startsWith('r2://')
+          ? avatarValue
+          : null)
+      : null;
+
     return {
       ...data,
       id: data.id,
@@ -66,8 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       studentStatus: data.studentStatus ?? null,
       studentId: data.studentId ?? null,
       phoneNumber: data.phoneNumber ?? null,
-      // Use backend proxy redirect endpoint for avatars so frontend never directly references r2:// keys
-      avatarUrl: data.avatarUrl ? `/api/files/users/${data.id}/avatar/redirect` : null,
+      avatarUrl: directAvatar ?? (data?.id ? `/api/files/users/${data.id}/avatar/redirect` : null),
       isActive: data.isActive ?? true,
       department: data.department ?? null,
     } as User;
