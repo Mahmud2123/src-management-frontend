@@ -231,19 +231,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         router.replace(destination);
       } catch (error: any) {
-        let message =
-          'Invalid email or password. Please try again.';
+        // Map common HTTP failures to friendly, non-revealing messages.
+        const status = error?.response?.status;
 
+        if (status === 401) {
+          throw new Error('Incorrect email or password. Please check your credentials and try again.');
+        }
+
+        if (status === 403) {
+          // Backend may provide a reason, but keep message generic and helpful.
+          throw new Error('Your account does not have access to sign in. Contact support if you believe this is in error.');
+        }
+
+        if (status === 429) {
+          throw new Error('Too many login attempts. Please try again later.');
+        }
+
+        if (!error?.response) {
+          // Network or CORS error (no response)
+          throw new Error('Unable to connect to the server. Please check your network connection and try again.');
+        }
+
+        if (status >= 500) {
+          throw new Error('Something went wrong on the server. Please try again later.');
+        }
+
+        // Fallback: don't surface raw backend messages in production — return a safe default.
         const data = error?.response?.data;
-
-        if (typeof data?.message === 'string') {
+        let message = 'Login failed. Please try again.';
+        if (typeof data?.message === 'string' && process.env.NODE_ENV !== 'production') {
+          // In non-production, surface the backend message for debugging.
           message = data.message;
-        } else if (Array.isArray(data?.message)) {
-          message = data.message.join('. ');
-        } else if (typeof data?.error === 'string') {
-          message = data.error;
-        } else if (error?.message) {
-          message = error.message;
         }
 
         throw new Error(message);
