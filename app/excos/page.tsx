@@ -1,8 +1,8 @@
 // app/excos/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/Card';
 import { RefreshButton } from '@/components/refreshButton';
 import { Badge } from '@/components/Badge';
@@ -16,10 +16,19 @@ import {
   Award,
   Crown,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Edit,
+  Trash2,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import apiClient from '@/lib/api/client2';
+import { useAuth } from '@/providers/auth';
+import { toast } from 'sonner';
+import ExecFormModal from '@/components/ExecFormModal';
+import TermFormModal from '@/components/TermFormModal';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
 interface ExecutiveMember {
   id: string;
@@ -57,6 +66,17 @@ const fetchAllExcos = async (): Promise<ExecutiveMember[]> => {
 export default function ExcosDirectoryPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'past' | 'all'>('current');
   const [refetchKey, setRefetchKey] = useState(0);
+
+  // modal & form state
+  const [showExecForm, setShowExecForm] = useState(false);
+  const [editingExec, setEditingExec] = useState<any | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingExec, setDeletingExec] = useState<any | null>(null);
+
+  const [showTermForm, setShowTermForm] = useState(false);
+  const [editingTerm, setEditingTerm] = useState<any | null>(null);
+  const [showDeleteTermModal, setShowDeleteTermModal] = useState(false);
+  const [deletingTerm, setDeletingTerm] = useState<any | null>(null);
 
   const handleRefresh = () => {
     setRefetchKey(prev => prev + 1);
@@ -210,6 +230,49 @@ export default function ExcosDirectoryPage() {
     );
   }
 
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+    const queryClient = useQueryClient();
+
+  const fetchTerms = async () => {
+    const res = await apiClient.get('/excos/terms');
+    return res.data;
+  };
+
+  const { data: terms = [] } = useQuery({ queryKey: ['exco-terms', refetchKey], queryFn: fetchTerms, staleTime: 60000 });
+
+  const createTerm = async () => {
+    const name = prompt('Term name (e.g. 2025/2026 SRC Executive)');
+    if (!name) return;
+    const startYearStr = prompt('Start year (e.g. 2025)');
+    const endYearStr = prompt('End year (e.g. 2026)');
+    if (!startYearStr || !endYearStr) return;
+    const startYear = parseInt(startYearStr, 10);
+    const endYear = parseInt(endYearStr, 10);
+    if (isNaN(startYear) || isNaN(endYear)) {
+      toast.error('Invalid years provided');
+      return;
+    }
+    try {
+      await apiClient.post('/excos/terms', { name, startYear, endYear });
+      toast.success('Executive term created successfully');
+      setRefetchKey(k => k + 1);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || 'Failed to create term');
+    }
+  };
+
+  const deleteTerm = async (id: string) => {
+    if (!confirm('Delete this term? This will fail if executives still belong to it.')) return;
+    try {
+      await apiClient.delete(`/excos/terms/${id}`);
+      toast.success('Term deleted');
+      setRefetchKey(k => k + 1);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || 'Failed to delete term');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/20 to-emerald-50/30 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -228,11 +291,21 @@ export default function ExcosDirectoryPage() {
               </div>
             </div>
           </div>
-          <RefreshButton 
-            onRefresh={handleRefresh} 
-            label="Refresh"
-            className="bg-white shadow-sm border border-gray-200"
-          />
+          <div className="flex items-center gap-2">
+            <RefreshButton onRefresh={handleRefresh} label="Refresh" className="bg-white shadow-sm border border-gray-200" />
+            {isSuperAdmin && (
+              <>
+                <button onClick={()=>{ setEditingExec(null); setShowExecForm(true); }} className="px-3 py-2 bg-white border rounded-xl flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-green-700" />
+                  <span className="hidden sm:inline">Add Executive</span>
+                </button>
+                <button onClick={()=>{ setEditingTerm(null); setShowTermForm(true); }} className="px-3 py-2 bg-white border rounded-xl flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-green-700" />
+                  <span className="hidden sm:inline">Add Term</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -319,6 +392,14 @@ export default function ExcosDirectoryPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modals */}
+      <ExecFormModal open={showExecForm} onClose={() => { setShowExecForm(false); setEditingExec(null); }} initial={editingExec} terms={terms} />
+      <ConfirmDeleteModal open={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={deletingExec ? `Delete ${deletingExec.name}?` : 'Delete Executive'} description={deletingExec ? `Are you sure you want to remove ${deletingExec.name}? This action cannot be undone.` : ''} onConfirm={() => deletingExec && apiClient.delete(`/excos/${deletingExec.id}`).then(()=>{ toast.success('Deleted'); setShowDeleteModal(false); setRefetchKey(k=>k+1); queryClient.invalidateQueries({ queryKey: ['excos-all'] }); })} loading={false} />
+
+      <TermFormModal open={showTermForm} onClose={() => { setShowTermForm(false); setEditingTerm(null); }} initial={editingTerm} />
+      <ConfirmDeleteModal open={showDeleteTermModal} onClose={() => setShowDeleteTermModal(false)} title={deletingTerm ? `Delete term ${deletingTerm.name}?` : 'Delete Term'} description={deletingTerm ? `Are you sure you want to delete term ${deletingTerm.name}? This will fail if executives are assigned to it.` : ''} onConfirm={() => deletingTerm && apiClient.delete(`/excos/terms/${deletingTerm.id}`).then(()=>{ toast.success('Deleted term'); setShowDeleteTermModal(false); setRefetchKey(k=>k+1); queryClient.invalidateQueries({ queryKey: ['exco-terms'] }); }).catch((e)=>{ toast.error(e?.response?.data?.message || e?.message || 'Failed to delete term'); })} loading={false} />
+
     </div>
   );
 }
