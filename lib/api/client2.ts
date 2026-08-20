@@ -45,9 +45,10 @@ apiClient.interceptors.response.use(
 
     if (status === 503 && isBrowser) {
       try {
-        // Clear client-side stored auth and redirect to maintenance page
-        localStorage.removeItem('src_token');
-        localStorage.removeItem('src_user');
+        // Notify app of maintenance state; DO NOT clear auth tokens (do not log out users).
+        window.dispatchEvent(new CustomEvent('system:maintenance', { detail: { url } }));
+        // Let the app decide how to show maintenance UI; by default redirect to /maintenance for non-admin views.
+        // Do not remove localStorage tokens here — keep sessions intact.
         window.location.href = '/maintenance';
       } catch {}
     }

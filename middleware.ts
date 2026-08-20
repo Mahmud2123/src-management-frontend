@@ -74,7 +74,6 @@ export async function middleware(request: NextRequest) {
         if (!token) {
           // no token � redirect to maintenance (clear cookie as a precaution)
           const res = NextResponse.redirect(new URL('/maintenance', request.url));
-          res.headers.set('set-cookie', 'src_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax');
           return res;
         }
 
@@ -97,13 +96,11 @@ export async function middleware(request: NextRequest) {
         }
 
         const res = NextResponse.redirect(new URL('/maintenance', request.url));
-        res.headers.set('set-cookie', 'src_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax');
         return res;
       }
 
       // For all other routes (including '/', '/login', API routes), redirect to /maintenance and clear cookie
       const res = NextResponse.redirect(new URL('/maintenance', request.url));
-      res.headers.set('set-cookie', 'src_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax');
       return res;
     }
   } catch (err) {
