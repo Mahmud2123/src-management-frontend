@@ -150,7 +150,7 @@ export default function UsersManagementPage() {
     mutationFn: (data: any) => createUser(data),
     onSuccess: () => {
       toast.success('User Created Successfully', {
-        description: 'Temporary password: password123',
+        description: 'Password has been sent to email.',
         duration: 5000,
       });
       queryClient.invalidateQueries({ queryKey: ['users'] });

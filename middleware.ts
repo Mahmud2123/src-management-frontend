@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   // Check if path is public
   const isPublicRoute = publicRoutes.some(route => {
     if (route.includes(':')) {
-      const pattern = route.replace(/:path\*/, '.*');
+      const pattern = route.replace(/:path\*/g, '.*');
       return new RegExp(`^${pattern}$`).test(pathname);
     }
     return pathname === route || pathname.startsWith(route + '/');
@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
       const data = await statusRes.json();
       const maintenance = !!data?.maintenanceMode;
       if (!maintenance) {
-        // not in maintenance â€” proceed as normal
+        // not in maintenance — proceed as normal
         // If login page requested and user has token, allow (login flow may redirect)
         return NextResponse.next();
       }
@@ -68,10 +68,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
       }
 
-      // Allow admin paths (admin UI) only for verified admin tokens
-      if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin') || pathname.startsWith('/api/settings')) {
+      // Admin UI paths that should be accessible to admins during maintenance
+      const adminUiPaths = ['/admin', '/settings', '/users', '/audit-logs', '/excos'];
+      if (adminUiPaths.some(p => pathname.startsWith(p)) || pathname.startsWith('/api/admin') || pathname.startsWith('/api/settings')) {
         if (!token) {
-          // no token â€” redirect to maintenance (clear cookie as a precaution)
+          // no token — redirect to maintenance (clear cookie as a precaution)
           const res = NextResponse.redirect(new URL('/maintenance', request.url));
           res.headers.set('set-cookie', 'src_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax');
           return res;
@@ -92,6 +93,7 @@ export async function middleware(request: NextRequest) {
           }
         } catch (e) {
           // ignore and fall through to redirect
+          console.warn('verify-admin request failed', e);
         }
 
         const res = NextResponse.redirect(new URL('/maintenance', request.url));
