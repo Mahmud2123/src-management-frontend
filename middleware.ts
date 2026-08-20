@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
       const data = await statusRes.json();
       const maintenance = !!data?.maintenanceMode;
       if (!maintenance) {
-        // not in maintenance — proceed as normal
+        // not in maintenance ï¿½ proceed as normal
         // If login page requested and user has token, allow (login flow may redirect)
         return NextResponse.next();
       }
@@ -72,7 +72,7 @@ export async function middleware(request: NextRequest) {
       const adminUiPaths = ['/admin', '/settings', '/users', '/audit-logs', '/excos'];
       if (adminUiPaths.some(p => pathname.startsWith(p)) || pathname.startsWith('/api/admin') || pathname.startsWith('/api/settings')) {
         if (!token) {
-          // no token — redirect to maintenance (clear cookie as a precaution)
+          // no token ï¿½ redirect to maintenance (clear cookie as a precaution)
           const res = NextResponse.redirect(new URL('/maintenance', request.url));
           res.headers.set('set-cookie', 'src_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax');
           return res;
@@ -80,7 +80,7 @@ export async function middleware(request: NextRequest) {
 
         // Verify token with backend verify-admin endpoint
         try {
-          const verifyRes = await fetch(`${API_BASE}/auth/verify-admin`, {
+          const verifyRes = await fetch(`${API_BASE}/api/auth/verify-admin`, {
             method: 'GET',
             headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store',
