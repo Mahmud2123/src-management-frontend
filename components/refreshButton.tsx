@@ -34,22 +34,22 @@ export function RefreshButton({
   };
 
   const sizeClasses = {
-    sm: 'p-1.5 text-xs',
-    md: 'p-2 text-sm',
-    lg: 'p-2.5 text-base',
+    sm: 'px-2.5 py-1.5 text-xs',
+    md: 'px-3 py-2 text-sm',
+    lg: 'px-3.5 py-2.5 text-base',
   };
 
   return (
     <Button
       onClick={handleRefresh}
       disabled={isRefreshing}
-      className={`${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 whitespace-nowrap ${sizeClasses[size]} ${className}`}
       title="Refresh data"
     >
       <RefreshCw 
-        className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
+        className={`w-4 h-4 shrink-0 ${isRefreshing ? 'animate-spin' : ''}`} 
       />
-      {label && <span className="ml-2">{label}</span>}
+      {label && <span>{label}</span>}
     </Button>
   );
 }

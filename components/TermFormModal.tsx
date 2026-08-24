@@ -33,16 +33,39 @@ export default function TermFormModal({ open, onClose, initial }: any) {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    const trimmedName = form.name.trim();
     const sy = Number(form.startYear);
     const ey = Number(form.endYear);
-    if (!form.name || isNaN(sy) || isNaN(ey) || sy>ey) { toast.error('Please provide valid term name and years (start <= end)'); return; }
+
+    if (!Number.isFinite(sy) || !Number.isFinite(ey) || !form.startYear || !form.endYear) {
+      toast.error('Please provide valid start and end years.');
+      return;
+    }
+
+    if (sy > ey) {
+      toast.error('Start year must be less than or equal to end year.');
+      return;
+    }
+
+    const effectiveName = trimmedName || `${sy}/${ey} SRC Executive`;
+    const payload = {
+      name: effectiveName,
+      startYear: sy,
+      endYear: ey,
+      isCurrent: !!form.isCurrent,
+      description: form.description?.trim() || '',
+    };
+
     try {
       if (initial && initial.id) {
-        await updateMutation.mutateAsync({ id: initial.id, data: { name: form.name, startYear: sy, endYear: ey, isCurrent: !!form.isCurrent, description: form.description } });
+        await updateMutation.mutateAsync({ id: initial.id, data: payload });
       } else {
-        await createMutation.mutateAsync({ name: form.name, startYear: sy, endYear: ey, isCurrent: !!form.isCurrent, description: form.description });
+        await createMutation.mutateAsync(payload);
       }
-    } catch (err:any) { toast.error(err?.response?.data?.message || err?.message || 'Failed to save term'); }
+    } catch (err:any) {
+      const message = err?.response?.data?.message || err?.message || 'Failed to save term';
+      toast.error(message);
+    }
   };
 
   return (

@@ -407,17 +407,21 @@ export default function ExcosDirectoryPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <RefreshButton onRefresh={handleRefresh} label="Refresh" className="bg-white shadow-sm border border-gray-200" />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <RefreshButton
+              onRefresh={handleRefresh}
+              label="Refresh"
+              className="bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900"
+            />
             {isSuperAdmin && (
               <>
-                <button onClick={()=>{ setEditingExec(null); setShowExecForm(true); }} className="px-3 py-2 bg-white border rounded-xl flex items-center gap-2">
+                <button onClick={()=>{ setEditingExec(null); setShowExecForm(true); }} className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm">
                   <Plus className="w-4 h-4 text-green-700" />
-                  <span className="hidden sm:inline">Add Executive</span>
+                  <span className="text-xs sm:text-sm font-medium">Add Executive</span>
                 </button>
-                <button onClick={()=>{ setEditingTerm(null); setShowTermForm(true); }} className="px-3 py-2 bg-white border rounded-xl flex items-center gap-2">
+                <button onClick={()=>{ setEditingTerm(null); setShowTermForm(true); }} className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm">
                   <Plus className="w-4 h-4 text-green-700" />
-                  <span className="hidden sm:inline">Add Term</span>
+                  <span className="text-xs sm:text-sm font-medium">Add Term</span>
                 </button>
               </>
             )}
