@@ -18,7 +18,9 @@ const nextConfig = {
     // Next.js requires explicit localPatterns for relative/local image URLs that include query strings.
     // Use pathname-only patterns (Next validates only pathname for localPatterns).
     localPatterns: [
+      // Allow the proxy endpoint and the user/attachment redirect endpoints
       { pathname: '/api/files/proxy' },
+      { pathname: '/api/files/:path*' },
     ],
   },
   async rewrites() {
