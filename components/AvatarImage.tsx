@@ -118,6 +118,7 @@ export default function AvatarImage({ userId, name, size = 40, className = '', o
         onLoad={handleLoad}
         className="object-cover"
         priority={false}
+        unoptimized={src?.startsWith('/api/files')}
       />
     </div>
   );
