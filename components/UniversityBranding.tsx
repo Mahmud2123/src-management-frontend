@@ -1,8 +1,8 @@
 // components/UniversityBranding.tsx
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { Shield } from 'lucide-react';
 
 interface UniversityBrandingProps {
@@ -20,26 +20,46 @@ export function UniversityBranding({
   const universityName = "Sa'adu Zungur University";
   const shortName = "SAZU";
 
-  const primaryLogoSrc = process.env.NEXT_PUBLIC_SRC_LOGO || '/src-logo.png';
+  const primaryLogoSrc = process.env.NEXT_PUBLIC_SRC_LOGO?.trim() || '/src-logo.png';
   const secondaryLogoSrc = '/sch-logo.jpg';
+  const [primaryFailed, setPrimaryFailed] = useState(false);
+  const [secondaryFailed, setSecondaryFailed] = useState(false);
+
+  const renderLogo = (src: string, alt: string, failed: boolean, setFailed: (value: boolean) => void, size: number, wrapperClassName: string) => {
+    if (failed) {
+      return (
+        <div className={`${wrapperClassName} flex items-center justify-center bg-white/90 text-emerald-700`}>
+          <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+        </div>
+      );
+    }
+
+    return (
+      <div className={`${wrapperClassName} overflow-hidden border border-white/20 bg-white/90 shadow-sm shrink-0`}>
+        <Image
+          src={src}
+          alt={alt}
+          width={size}
+          height={size}
+          unoptimized
+          onError={() => setFailed(true)}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  };
 
   const logos = (
     <div className="flex items-center gap-2.5 flex-shrink-0">
-      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-white/20 bg-white/90 shadow-sm shrink-0">
-        <Image src={secondaryLogoSrc} alt="SAZU School Logo" width={40} height={40} className="h-full w-full object-cover" />
-      </div>
-      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-white/20 bg-white/90 shadow-sm shrink-0">
-        <Image src={primaryLogoSrc} alt="SRC Logo" width={40} height={40} className="h-full w-full object-cover" />
-      </div>
+      {renderLogo(secondaryLogoSrc, 'SAZU School Logo', secondaryFailed, setSecondaryFailed, 40, 'w-8 h-8 sm:w-10 sm:h-10 rounded-xl')}
+      {renderLogo(primaryLogoSrc, 'SRC Logo', primaryFailed, setPrimaryFailed, 40, 'w-8 h-8 sm:w-10 sm:h-10 rounded-xl')}
     </div>
   );
 
   if (variant === 'icon-only') {
     return (
       <div className={`flex items-center ${className}`}>
-        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex-shrink-0 border border-white/20 bg-white/90">
-          <Image src={primaryLogoSrc} alt="SRC Logo" width={40} height={40} className="h-full w-full object-cover" />
-        </div>
+        {renderLogo(primaryLogoSrc, 'SRC Logo', primaryFailed, setPrimaryFailed, 40, 'w-10 h-10 rounded-xl shadow-md flex-shrink-0 border border-white/20')}
       </div>
     );
   }
@@ -68,12 +88,8 @@ export function UniversityBranding({
   return (
     <div className={`flex items-center gap-4 ${className}`}>
       <div className="flex items-center gap-2.5 flex-shrink-0">
-        <div className="w-12 h-12 rounded-2xl overflow-hidden border border-green-200 bg-white shadow-lg flex-shrink-0">
-          <Image src={secondaryLogoSrc} alt="SAZU School Logo" width={48} height={48} className="h-full w-full object-cover" />
-        </div>
-        <div className="w-12 h-12 rounded-2xl overflow-hidden border border-green-200 bg-white shadow-lg flex-shrink-0">
-          <Image src={primaryLogoSrc} alt="SRC Logo" width={48} height={48} className="h-full w-full object-cover" />
-        </div>
+        {renderLogo(secondaryLogoSrc, 'SAZU School Logo', secondaryFailed, setSecondaryFailed, 48, 'w-12 h-12 rounded-2xl border border-green-200 bg-white shadow-lg flex-shrink-0')}
+        {renderLogo(primaryLogoSrc, 'SRC Logo', primaryFailed, setPrimaryFailed, 48, 'w-12 h-12 rounded-2xl border border-green-200 bg-white shadow-lg flex-shrink-0')}
       </div>
 
       <div>

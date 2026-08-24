@@ -8,6 +8,13 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
 export default function ExecFormModal({ open, onClose, initial, terms }: any) {
   const queryClient = useQueryClient();
+  const orderedTerms = React.useMemo(() => {
+    return [...(terms || [])].sort((a: any, b: any) => {
+      const aYear = Number(a?.startYear ?? a?.name?.split('/')?.[0] ?? 0);
+      const bYear = Number(b?.startYear ?? b?.name?.split('/')?.[0] ?? 0);
+      return aYear - bYear;
+    });
+  }, [terms]);
   const [form, setForm] = useState<any>({
     name: initial?.name || '',
     position: initial?.position || '',
@@ -23,7 +30,7 @@ export default function ExecFormModal({ open, onClose, initial, terms }: any) {
     endDate: initial?.endDate ? initial.endDate.split('T')[0] : '',
     isCurrent: initial?.isCurrent || false,
     termId: initial?.termId || '',
-    termYear: initial?.termYear || (terms && terms[0]?.name) || '',
+    termYear: initial?.termYear || (orderedTerms && orderedTerms[0]?.name) || '',
     displayOrder: initial?.displayOrder ?? 0,
     isActive: initial?.isActive ?? true,
     avatarFile: null,
@@ -54,7 +61,7 @@ export default function ExecFormModal({ open, onClose, initial, terms }: any) {
       endDate: initial?.endDate ? initial.endDate.split('T')[0] : '',
       isCurrent: initial?.isCurrent || false,
       termId: initial?.termId || '',
-      termYear: initial?.termYear || (terms && terms[0]?.name) || '',
+      termYear: initial?.termYear || (orderedTerms && orderedTerms[0]?.name) || '',
       displayOrder: initial?.displayOrder ?? 0,
       isActive: initial?.isActive ?? true,
       avatarFile: null,
@@ -323,9 +330,8 @@ export default function ExecFormModal({ open, onClose, initial, terms }: any) {
 
             <div>
               <label className="block text-xs font-bold uppercase text-gray-600">Term *</label>
-              <select value={form.termId} onChange={(e)=>{ const sel = e.target.value; setForm((p:any)=>({...p,termId:sel, termYear: terms.find((t:any)=>t.id===sel)?.name || p.termYear })); }} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl">
-                <option value="">Select term</option>
-                {terms && terms.map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}
+              <select value={form.termId}               onChange={(e)=>{ const sel = e.target.value; setForm((p:any)=>({...p,termId:sel, termYear: orderedTerms.find((t:any)=>t.id===sel)?.name || p.termYear })); }} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl">                <option value="">Select term</option>
+                {orderedTerms && orderedTerms.map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
               {errors.termId && <p className="text-xs text-red-600 mt-1">{errors.termId}</p>}
             </div>
