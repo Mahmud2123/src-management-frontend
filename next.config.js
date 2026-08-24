@@ -5,6 +5,8 @@ const allowedImageHosts = [
   'assets.srcsazu.com',
   'srcsazu.com',
   'www.srcsazu.com',
+  // Cloudflare R2 bucket host used in diagnostics — allow it so Next's optimizer can fetch directly
+  'src-sazu-uploads.53a58af939ce8862861f4a56e9868f3d.r2.cloudflarestorage.com',
 ].filter(Boolean);
 
 const nextConfig = {
