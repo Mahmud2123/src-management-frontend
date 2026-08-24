@@ -432,8 +432,15 @@ export default function UsersManagementPage() {
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
                             <div className="w-full h-full bg-gradient-to-br from-green-700 to-green-800 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-sm overflow-hidden">
-                              {/* AvatarImage will attempt to load the user's avatar via backend redirect and fall back to initials on error */}
-                              <AvatarImage userId={u.id} avatarUrl={u.avatarUrl} name={u.name} className="w-full h-full cursor-pointer" size={40} onClick={() => router.push(`/users/${u.id}`)} />
+                              {/* For the user management list, show a simple initial avatar (clickable) instead of the full image.
+                                  Admins can view the full picture on the detailed user page. */}
+                              <button
+                                onClick={() => router.push(`/users/${u.id}`)}
+                                aria-label={`Open ${u.name} profile`}
+                                className="w-full h-full flex items-center justify-center text-white font-bold text-xs sm:text-sm cursor-pointer"
+                              >
+                                {u.name?.split(' ')[0]?.charAt(0)?.toUpperCase() || 'U'}
+                              </button>
                             </div>
                             <button
                               onClick={() => {
