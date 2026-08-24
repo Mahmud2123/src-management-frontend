@@ -33,7 +33,8 @@ function SidebarNavList({
     queryKey: ['notifications'],
     queryFn: fetchNotifications,
     enabled: !!user,
-    refetchInterval: 30000,
+    // Notifications are updated in real-time via Socket.IO — avoid polling here and rely on socket events
+    staleTime: 1000 * 30, // 30s to avoid immediate refetch on remount
   });
 
   const unreadCount = Array.isArray(notifications) 
@@ -165,6 +166,7 @@ export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -188,7 +190,8 @@ export default function Sidebar() {
     queryKey: ['complaint-stats'],
     queryFn: fetchComplaintStats,
     enabled: !!user && (isSRC || isUnitStaff),
-    refetchInterval: 30000,
+    // Real-time updates are delivered by the complaints socket; avoid redundant polling
+    staleTime: 1000 * 15, // 15s
     retry: false,
   });
 
@@ -198,7 +201,8 @@ export default function Sidebar() {
     queryKey: ['system-settings-sidebar-badge'],
     queryFn: fetchSystemSettings,
     enabled: !!user && isAdminUser,
-    refetchInterval: 15000,
+    // Settings rarely change; increase stale time to reduce requests
+    staleTime: 1000 * 60 * 30, // 30 minutes
     retry: false,
   });
 
@@ -209,8 +213,7 @@ export default function Sidebar() {
   useEffect(() => {
     if (!complaintsSocket || !isConnectedComplaints) return;
 
-  const invalidate = () =>
-  queryClient.invalidateQueries({ queryKey: ['complaint-stats'] });
+    const invalidate = () => queryClient.invalidateQueries({ queryKey: ['complaint-stats'] });
 
     complaintsSocket.on('complaint:created', invalidate);
     complaintsSocket.on('complaint:updated:global', invalidate);
@@ -220,6 +223,27 @@ export default function Sidebar() {
       try { complaintsSocket.off('complaint:updated:global', invalidate); } catch (e) {}
     };
   }, [complaintsSocket, isConnectedComplaints, queryClient]);
+
+  // Real-time notifications update: use socket instead of polling
+  const { notificationsSocket, isConnectedNotifications } = useSocket();
+  useEffect(() => {
+    if (!notificationsSocket || !isConnectedNotifications) return;
+
+    const handleNew = (newNotif: any) => {
+      queryClient.setQueryData(['notifications'], (old: any[] = []) => {
+        if (old.some((n) => n.id === newNotif.id)) return old;
+        return [newNotif, ...old];
+      });
+      // keep counts consistent
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    };
+
+    notificationsSocket.on('notification:new', handleNew);
+
+    return () => {
+      try { notificationsSocket.off('notification:new', handleNew); } catch (e) {}
+    };
+  }, [notificationsSocket, isConnectedNotifications, queryClient]);
 
   useEffect(() => {
     if (isMobileOpen) {
@@ -314,20 +338,42 @@ export default function Sidebar() {
       {/* User Card */}
       {/* Resolve avatar URL from uploads or absolute */}
       {(() => {
-        const resolveUploadUrl = (url?: string | null) => {
-          if (!url) return null;
-          if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        const normalizeAvatarUrl = (value?: string | null) => {
+          if (!value) return null;
+          const trimmed = String(value).trim();
+          if (!trimmed || trimmed === '?' || trimmed === 'null' || trimmed === 'undefined') return null;
 
-          // Map r2:// URIs or plain storage keys to the backend avatar redirect endpoint
-          // so the backend will safely proxy or sign the URL for the browser.
-          if (url.startsWith('r2://') || url.includes('/')) {
-            return `/api/files/users/${user.id}/avatar/redirect`;
+          // Normalize leading slashes and attempt to fix common malformed cases such as
+          // "/https:/..." or "https:/cdn..." (missing one slash). Convert these to valid
+          // "https://..." so the browser/next/image won't try to fetch a local path.
+          let cleaned = trimmed.replace(/^\/+/, '');
+
+          // If the value looks like "http:/something" or "https:/something" (only one slash)
+          // normalize it to include the double slash.
+          if (/^https?:\/[^/]/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^https?:\//i, (m) => (m.toLowerCase().startsWith('https') ? 'https://' : 'http://'));
           }
 
-          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || null;
-          let base = 'https://src-management-backend.onrender.com';
-          if (apiBase) base = apiBase.replace(/\/api\/?$/,'').replace(/\/$/, '');
-          return `${base}${url.startsWith('/') ? url : `/${url}`}`;
+          try {
+            const parsed = new URL(cleaned);
+            const allowedProtocols = ['http:', 'https:', 'data:', 'blob:'];
+            if (allowedProtocols.includes(parsed.protocol)) return cleaned;
+            return null;
+          } catch {
+            // If it's a relative uploads path like "/uploads/..." or "uploads/...", return as-is
+            if (trimmed.startsWith('/')) return trimmed;
+            if (trimmed.startsWith('uploads/')) return `/${trimmed}`;
+            return null;
+          }
+        };
+
+        const resolveUploadUrl = (url?: string | null) => {
+          const normalized = normalizeAvatarUrl(url);
+          if (normalized) return normalized;
+
+          // Only send users to the avatar redirect route when there is a real stored image.
+          // If avatarUrl is null, do not fabricate a broken route.
+          return null;
         };
 
         const avatarSrc = resolveUploadUrl(user?.avatarUrl || null);
@@ -335,10 +381,11 @@ export default function Sidebar() {
         return !collapsed ? (
           <div className="p-4 mx-3 my-3 rounded-2xl bg-gradient-to-br from-green-50/60 to-emerald-50/40 border border-green-100/80">
             <div className="flex items-center gap-3 mb-2.5">
-              {avatarSrc ? (
+              {avatarSrc && !avatarFailed ? (
                 <img
                   src={avatarSrc}
                   alt={user?.name || 'User avatar'}
+                  onError={() => setAvatarFailed(true)}
                   className="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0"
                 />
               ) : (
@@ -359,11 +406,12 @@ export default function Sidebar() {
           </div>
         ) : (
           <div className="p-3 flex justify-center border-b border-gray-100">
-            {avatarSrc ? (
+            {avatarSrc && !avatarFailed ? (
               <img
                 src={avatarSrc}
                 alt={user?.name || 'User avatar'}
                 title={`${user?.name} (${roleConfig.label})`}
+                onError={() => setAvatarFailed(true)}
                 className="w-10 h-10 rounded-full object-cover shadow-sm cursor-pointer"
               />
             ) : (

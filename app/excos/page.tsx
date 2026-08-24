@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/Card';
 import { RefreshButton } from '@/components/refreshButton';
 import { Badge } from '@/components/Badge';
@@ -66,6 +66,7 @@ const fetchAllExcos = async (): Promise<ExecutiveMember[]> => {
 export default function ExcosDirectoryPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'past' | 'all'>('current');
   const [refetchKey, setRefetchKey] = useState(0);
+  const [failedAvatarIds, setFailedAvatarIds] = useState<Record<string, boolean>>({});
 
   // modal & form state
   const [showExecForm, setShowExecForm] = useState(false);
@@ -116,7 +117,33 @@ export default function ExcosDirectoryPage() {
     return colors[position] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  const renderExecutiveCard = (exco: ExecutiveMember) => (
+  const getSafeAvatarSrc = (value?: string | null) => {
+    if (!value) return null;
+
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === '?' || trimmed === 'null' || trimmed === 'undefined') return null;
+
+    const cleaned = trimmed.replace(/^\/+/, '');
+    if (
+      cleaned.startsWith('http://') ||
+      cleaned.startsWith('https://') ||
+      cleaned.startsWith('data:') ||
+      cleaned.startsWith('blob:')
+    ) {
+      return cleaned;
+    }
+
+    if (trimmed.startsWith('/')) return trimmed;
+    if (trimmed.startsWith('uploads/')) return `/${trimmed}`;
+
+    return null;
+  };
+
+  const renderExecutiveCard = (exco: ExecutiveMember) => {
+    const avatarSrc = getSafeAvatarSrc(exco.avatarUrl);
+    const avatarFailed = !!failedAvatarIds[exco.id];
+
+    return (
     <Card 
       key={exco.id} 
       className={`p-6 border-0 shadow-md rounded-3xl bg-white hover:shadow-xl transition-all group ${
@@ -126,10 +153,11 @@ export default function ExcosDirectoryPage() {
       <div className="flex items-start gap-4">
         {/* Avatar */}
         <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-green-700 to-green-900 shadow-lg shadow-green-900/20 flex-shrink-0 flex items-center justify-center">
-          {exco.avatarUrl ? (
+          {avatarSrc && !avatarFailed ? (
             <img 
-              src={exco.avatarUrl} 
+              src={avatarSrc} 
               alt={exco.name} 
+              onError={() => setFailedAvatarIds(prev => ({ ...prev, [exco.id]: true }))}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -149,12 +177,47 @@ export default function ExcosDirectoryPage() {
                 {exco.position}
               </Badge>
             </div>
-            {exco.isCurrent && (
-              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-xs px-3 py-1 rounded-full flex items-center gap-1">
-                <Crown className="w-3 h-3" />
-                Current
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {exco.isCurrent && (
+                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-xs px-3 py-1 rounded-full flex items-center gap-1">
+                  <Crown className="w-3 h-3" />
+                  Current
+                </Badge>
+              )}
+
+              {isSuperAdmin && (
+                <div className="flex items-center gap-2">
+                  <button
+                    title="Move up"
+                    className="p-2 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50"
+                    onClick={() => changeOrderMutation.mutate({ id: exco.id, displayOrder: Math.max(0, (exco.displayOrder || 0) - 1) })}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7"/></svg>
+                  </button>
+                  <button
+                    title="Move down"
+                    className="p-2 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50"
+                    onClick={() => changeOrderMutation.mutate({ id: exco.id, displayOrder: (exco.displayOrder || 0) + 1 })}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+                  </button>
+                  <button
+                    title="Edit Executive"
+                    className="p-2 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50"
+                    onClick={() => { setEditingExec(exco); setShowExecForm(true); }}
+                  >
+                    <Edit className="w-4 h-4 text-green-700" />
+                  </button>
+                  <button
+                    title="Delete Executive"
+                    className="p-2 bg-white border border-red-100 rounded-xl shadow-sm hover:bg-red-50"
+                    onClick={() => { setDeletingExec(exco); setShowDeleteModal(true); }}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {exco.title && (
@@ -210,6 +273,7 @@ export default function ExcosDirectoryPage() {
       </div>
     </Card>
   );
+  };
 
   if (error) {
     return (
@@ -222,7 +286,7 @@ export default function ExcosDirectoryPage() {
           </p>
           <RefreshButton 
             onRefresh={handleRefresh} 
-            className="mt-4 mx-auto"
+            className="mt-4 mx-auto text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 shadow-sm rounded-xl px-4 py-2 flex items-center gap-2"
             label="Retry"
           />
         </Card>
@@ -233,6 +297,58 @@ export default function ExcosDirectoryPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
     const queryClient = useQueryClient();
+
+    // Mutations for delete and order changes
+    const deleteExcoMutation = useMutation({
+      mutationFn: async (id: string) => {
+        const res = await apiClient.delete(`/excos/${id}`);
+        return res.data;
+      },
+      onSuccess: () => {
+        toast.success('Executive deleted successfully.');
+        queryClient.invalidateQueries({ queryKey: ['excos-current'] });
+        queryClient.invalidateQueries({ queryKey: ['excos-past'] });
+        queryClient.invalidateQueries({ queryKey: ['excos-all'] });
+        setShowDeleteModal(false);
+        setDeletingExec(null);
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || err?.message || 'Unable to delete executive');
+      }
+    });
+
+    const deleteTermMutation = useMutation({
+      mutationFn: async (id: string) => {
+        const res = await apiClient.delete(`/excos/terms/${id}`);
+        return res.data;
+      },
+      onSuccess: () => {
+        toast.success('Term deleted successfully.');
+        queryClient.invalidateQueries({ queryKey: ['exco-terms'] });
+        setShowDeleteTermModal(false);
+        setDeletingTerm(null);
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || err?.message || 'Unable to delete term');
+      }
+    });
+
+    const changeOrderMutation = useMutation({
+      mutationFn: async ({ id, displayOrder }: any) => {
+        const res = await apiClient.put(`/excos/${id}`, { displayOrder });
+        return res.data;
+      },
+      onSuccess: () => {
+        toast.success('Display order updated');
+        queryClient.invalidateQueries({ queryKey: ['excos-current'] });
+        queryClient.invalidateQueries({ queryKey: ['excos-past'] });
+        queryClient.invalidateQueries({ queryKey: ['excos-all'] });
+        setRefetchKey(k => k + 1);
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || err?.message || 'Unable to update order');
+      }
+    });
 
   const fetchTerms = async () => {
     const res = await apiClient.get('/excos/terms');
@@ -395,10 +511,10 @@ export default function ExcosDirectoryPage() {
 
       {/* Modals */}
       <ExecFormModal open={showExecForm} onClose={() => { setShowExecForm(false); setEditingExec(null); }} initial={editingExec} terms={terms} />
-      <ConfirmDeleteModal open={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={deletingExec ? `Delete ${deletingExec.name}?` : 'Delete Executive'} description={deletingExec ? `Are you sure you want to remove ${deletingExec.name}? This action cannot be undone.` : ''} onConfirm={() => deletingExec && apiClient.delete(`/excos/${deletingExec.id}`).then(()=>{ toast.success('Deleted'); setShowDeleteModal(false); setRefetchKey(k=>k+1); queryClient.invalidateQueries({ queryKey: ['excos-all'] }); })} loading={false} />
+      <ConfirmDeleteModal open={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={deletingExec ? `Delete ${deletingExec.name}?` : 'Delete Executive'} description={deletingExec ? `Are you sure you want to remove ${deletingExec.name}? This action cannot be undone.` : ''} onConfirm={() => deletingExec && deleteExcoMutation.mutate(deletingExec.id)} loading={(deleteExcoMutation as any).status === 'loading'} />
 
       <TermFormModal open={showTermForm} onClose={() => { setShowTermForm(false); setEditingTerm(null); }} initial={editingTerm} />
-      <ConfirmDeleteModal open={showDeleteTermModal} onClose={() => setShowDeleteTermModal(false)} title={deletingTerm ? `Delete term ${deletingTerm.name}?` : 'Delete Term'} description={deletingTerm ? `Are you sure you want to delete term ${deletingTerm.name}? This will fail if executives are assigned to it.` : ''} onConfirm={() => deletingTerm && apiClient.delete(`/excos/terms/${deletingTerm.id}`).then(()=>{ toast.success('Deleted term'); setShowDeleteTermModal(false); setRefetchKey(k=>k+1); queryClient.invalidateQueries({ queryKey: ['exco-terms'] }); }).catch((e)=>{ toast.error(e?.response?.data?.message || e?.message || 'Failed to delete term'); })} loading={false} />
+      <ConfirmDeleteModal open={showDeleteTermModal} onClose={() => setShowDeleteTermModal(false)} title={deletingTerm ? `Delete term ${deletingTerm.name}?` : 'Delete Term'} description={deletingTerm ? `Are you sure you want to delete term ${deletingTerm.name}? This will fail if executives are assigned to it.` : ''} onConfirm={() => deletingTerm && deleteTermMutation.mutate(deletingTerm.id)} loading={(deleteTermMutation as any).status === 'loading'} />
 
     </div>
   );

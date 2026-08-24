@@ -29,9 +29,16 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('src_token') : null;
     if (!user?.id || !token) return;
 
-    const baseUrl = (process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://src-management-backend.onrender.com')
-      .replace(/\/api$/, '')
-      .replace(/\/$/, '');
+    // Prefer an explicit socket URL; otherwise derive from client window.location when available.
+    let baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || '';
+    if (!baseUrl && typeof window !== 'undefined') {
+      // Assume backend runs on the same host but different port in local dev (3001)
+      const loc = window.location.origin;
+      // If the frontend is on port 3000, assume API/socket on 3001; otherwise use same origin.
+      if (loc.includes(':3000')) baseUrl = loc.replace(':3000', ':3001');
+      else baseUrl = loc;
+    }
+    baseUrl = baseUrl.replace(/\/api$/, '').replace(/\/$/, '') || 'https://src-management-backend.onrender.com';
 
     // Notifications namespace
     const notificationsInstance: Socket = io(`${baseUrl}/notifications`, {

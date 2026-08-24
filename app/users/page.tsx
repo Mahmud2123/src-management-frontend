@@ -620,7 +620,7 @@ function CreateUserModal({
   const { data: faculties = [], isLoading: facultiesLoading } = useQuery({
     queryKey: ['faculties'],
     queryFn: fetchFaculties,
-    staleTime: 60000,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
   const { data: departments = [] } = useQuery({

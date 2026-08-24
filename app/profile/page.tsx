@@ -14,6 +14,7 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import apiClient from '@/lib/api/client2';
 import { useQueryClient } from '@tanstack/react-query';
+import AvatarImage from '@/components/AvatarImage';
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -108,9 +109,10 @@ export default function ProfilePage() {
 
       if (response.data) {
         toast.success('Profile picture updated successfully!');
+        setAvatarPreview(null);
+        setAvatarFile(null);
         await refreshUser();
         queryClient.invalidateQueries({ queryKey: ['user'] });
-        setAvatarFile(null);
         setIsAvatarRequired(false);
       }
     } catch (err: any) {
@@ -190,21 +192,38 @@ export default function ProfilePage() {
     if (!trimmed || trimmed === '?' || trimmed === 'null' || trimmed === 'undefined') {
       return null;
     }
-    return trimmed;
+
+    const cleaned = trimmed.replace(/^\/+/, '');
+
+    try {
+      const u = new URL(cleaned);
+      const allowedProtocols = ['http:', 'https:', 'data:', 'blob:'];
+      if (allowedProtocols.includes(u.protocol)) return cleaned;
+      return null;
+    } catch {
+      if (trimmed.startsWith('/')) return trimmed;
+      if (trimmed.startsWith('uploads/')) return `/${trimmed}`;
+      return null;
+    }
   };
 
-  // Resolve avatar src to absolute URL when backend serves uploads at a different origin.
-  // Keep the local blob preview until the refreshed user record confirms the persisted URL.
+  // Resolve avatar src to a safe browser URL. Prefer the backend redirect endpoint when the
+  // stored value is a storage key, r2:// URI, or any non-browser-safe value.
   const resolveAvatarSrc = () => {
     if (avatarPreview) return avatarPreview;
-    const url = normalizeAvatarUrl(user?.avatarUrl);
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
 
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://src-management-backend.onrender.com';
-    const base = apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    const normalized = normalizeAvatarUrl(user?.avatarUrl);
+    if (normalized) {
+      if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
+      if (normalized.startsWith('/')) return normalized;
+      return normalized;
+    }
 
-    return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+    if (user?.id) {
+      return `/api/files/users/${user.id}/avatar/redirect`;
+    }
+
+    return null;
   };
 
   return (
@@ -216,19 +235,13 @@ export default function ProfilePage() {
         }`}>
           {/* Avatar with Upload */}
           <div className="relative flex-shrink-0 group">
-            <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gradient-to-br from-green-700 to-green-800 shadow-md shadow-green-900/25 flex items-center justify-center">
-              {resolveAvatarSrc() ? (
-                <img
-                src={resolveAvatarSrc() || undefined}
-                  alt={user?.name || 'User'}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-white text-4xl font-bold">
-                  {getUserInitials()}
-                </span>
-              )}
-            </div>
+            <AvatarImage
+              userId={user?.id}
+              name={user?.name}
+              avatarUrl={user?.avatarUrl}
+              size={96}
+              className="rounded-2xl shadow-md shadow-green-900/25"
+            />
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}

@@ -81,7 +81,8 @@ export default function CreateComplaintPage() {
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
-    staleTime: 60000,
+    // Categories are reference data that change rarely — cache longer to reduce requests
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
   // Duplicate Check

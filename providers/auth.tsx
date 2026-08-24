@@ -27,6 +27,34 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const TOKEN_KEY = 'src_token';
 const USER_KEY = 'src_user';
 
+function resolveStoredAvatar(avatarUrl?: string | null, userId?: string | null): string | null {
+  if (typeof avatarUrl !== 'string') return null;
+
+  const value = avatarUrl.trim();
+  if (!value || value === '?' || value === 'null' || value === 'undefined') return null;
+
+  const cleanedValue = value.replace(/^\/+/, '');
+  const absoluteUrl = /^https?:\/\//i.test(cleanedValue) || /^data:|^blob:/i.test(cleanedValue);
+
+  if (absoluteUrl) {
+    return cleanedValue;
+  }
+
+  if (value.startsWith('/')) {
+    return value;
+  }
+
+  if (value.startsWith('uploads/')) {
+    return `/${value}`;
+  }
+
+  if (value.startsWith('avatars/') || value.startsWith('r2://') || value.includes('/')) {
+    return userId ? `/api/files/users/${userId}/avatar/redirect` : null;
+  }
+
+  return null;
+}
+
 function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
 
@@ -56,17 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const normalizeUser = useCallback((data: any): User => {
-    const avatarValue = data?.avatarUrl;
-    const isValidAvatar = typeof avatarValue === 'string' && avatarValue.trim() && avatarValue !== '?' && avatarValue !== 'null' && avatarValue !== 'undefined';
-    const directAvatar = isValidAvatar
-      ? (avatarValue.startsWith('http://') || avatarValue.startsWith('https://') || avatarValue.startsWith('/uploads') || avatarValue.startsWith('uploads/')
-          ? avatarValue
-          : null)
-      : null;
-
-    // If avatar is a storage URI (r2://...) or a storage key, do not expose it directly to the browser.
-    // Use the backend redirect endpoint to safely resolve or proxy the asset.
-    const resolvedAvatar = directAvatar ?? (data?.id ? `/api/files/users/${data.id}/avatar/redirect` : null);
+    const resolvedAvatar = resolveStoredAvatar(data?.avatarUrl, data?.id);
 
     return {
       ...data,

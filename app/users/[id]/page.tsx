@@ -49,6 +49,19 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: any }) => updateUser(userId, data),
+    onSuccess: () => {
+      toast.success('User updated successfully');
+      setEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['user', id] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to update user', { description: err?.response?.data?.message || err.message });
+    },
+  });
+
   if (isLoading) return <LoadingState message="Loading user profile..." />;
   if (!user) return <div className="p-6">User not found</div>;
 
@@ -104,13 +117,31 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button onClick={() => setEditing(true)} className="bg-blue-700 text-white">Edit</Button>
-              <Button onClick={() => {
-                if (confirm(`Reset password for ${user.name}? This will set a temporary password.`)) {
-                  resetMutation.mutate();
-                }
-              }} variant="secondary">Reset Password</Button>
-              <Button onClick={() => deactivateMutation.mutate()} variant="danger">Deactivate</Button>
+              <Button
+                onClick={() => setEditing(true)}
+                className="bg-blue-700 text-white disabled:opacity-70"
+                disabled={resetMutation.isPending || deactivateMutation.isPending || updateMutation.isPending}
+              >
+                {updateMutation.isPending ? 'Updating...' : 'Edit'}
+              </Button>
+              <Button
+                onClick={() => {
+                  if (confirm(`Reset password for ${user.name}? This will set a temporary password.`)) {
+                    resetMutation.mutate();
+                  }
+                }}
+                variant="secondary"
+                disabled={resetMutation.isPending || deactivateMutation.isPending || updateMutation.isPending}
+              >
+                {resetMutation.isPending ? 'Resetting...' : 'Reset Password'}
+              </Button>
+              <Button
+                onClick={() => deactivateMutation.mutate()}
+                variant="danger"
+                disabled={resetMutation.isPending || deactivateMutation.isPending || updateMutation.isPending}
+              >
+                {deactivateMutation.isPending ? 'Deactivating...' : 'Deactivate'}
+              </Button>
             </div>
           </div>
         </Card>
@@ -119,14 +150,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           <EditUserModal
             user={user}
             onClose={() => setEditing(false)}
-            onSuccess={() => {
-              setEditing(false);
-              queryClient.invalidateQueries({ queryKey: ['user', id] });
-              queryClient.invalidateQueries({ queryKey: ['users'] });
-            }}
-            updateUserMutation={{
-              mutationFn: ({ userId, data }: any) => updateUser(userId, data),
-            } as any}
+            updateUserMutation={updateMutation}
           />
         )}
       </div>

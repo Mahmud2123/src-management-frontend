@@ -34,7 +34,7 @@ export default function EditUserModal({ user, onClose, updateUserMutation }: any
     isActive: user.isActive,
   });
 
-  const { data: faculties = [] } = useQuery({ queryKey: ['faculties'], queryFn: fetchFaculties });
+  const { data: faculties = [] } = useQuery({ queryKey: ['faculties'], queryFn: fetchFaculties, staleTime: 1000 * 60 * 60 * 24 });
   const { data: departments = [] } = useQuery({
     queryKey: ['departments', formData.facultyId],
     queryFn: () => fetchDepartments(formData.facultyId),

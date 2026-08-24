@@ -1,4 +1,4 @@
-// middleware.ts
+﻿// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
       const data = await statusRes.json();
       const maintenance = !!data?.maintenanceMode;
       if (!maintenance) {
-        // not in maintenance � proceed as normal
+        // not in maintenance ï¿½ proceed as normal
         // If login page requested and user has token, allow (login flow may redirect)
         return NextResponse.next();
       }
@@ -72,7 +72,7 @@ export async function middleware(request: NextRequest) {
       const adminUiPaths = ['/admin', '/settings', '/users', '/audit-logs', '/excos'];
       if (adminUiPaths.some(p => pathname.startsWith(p)) || pathname.startsWith('/api/admin') || pathname.startsWith('/api/settings')) {
         if (!token) {
-          // no token � redirect to maintenance (clear cookie as a precaution)
+          // no token ï¿½ redirect to maintenance (clear cookie as a precaution)
           const res = NextResponse.redirect(new URL('/maintenance', request.url));
           return res;
         }
@@ -81,7 +81,7 @@ export async function middleware(request: NextRequest) {
         try {
           const verifyRes = await fetch(`${API_BASE}/api/auth/verify-admin`, {
             method: 'GET',
-            headers: { Authorization: `Bearer ${token}` },
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
             cache: 'no-store',
           });
           if (verifyRes.ok) {
@@ -117,3 +117,5 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|css|js|json|woff|woff2|ttf|eot|otf|ico)).*)',
   ],
 };
+
+
