@@ -1,9 +1,9 @@
-// components/RefreshButton.tsx
 'use client';
 
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from './Button';
+import { twMerge } from 'tailwind-merge'; // Standard utility in Next.js / React projects
 
 interface RefreshButtonProps {
   onRefresh: () => void | Promise<void>;
@@ -39,11 +39,18 @@ export function RefreshButton({
     lg: 'px-3.5 py-2.5 text-base',
   };
 
+  // Combine default layout, size, and incoming custom styles using twMerge
+  const combinedClassName = twMerge(
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap',
+    sizeClasses[size],
+    className
+  );
+
   return (
     <Button
       onClick={handleRefresh}
       disabled={isRefreshing}
-      className={`inline-flex items-center justify-center gap-2 whitespace-nowrap ${sizeClasses[size]} ${className}`}
+      className={combinedClassName}
       title="Refresh data"
     >
       <RefreshCw 
