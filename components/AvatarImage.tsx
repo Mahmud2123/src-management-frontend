@@ -118,7 +118,7 @@ export default function AvatarImage({ userId, name, size = 40, className = '', o
         onLoad={handleLoad}
         className="object-cover"
         priority={false}
-        unoptimized={src?.startsWith('/api/files')}
+        unoptimized={Boolean(src && (src.startsWith('/api/files') || src.includes('r2.cloudflarestorage.com') || src.includes('src-sazu-uploads')))}
       />
     </div>
   );
